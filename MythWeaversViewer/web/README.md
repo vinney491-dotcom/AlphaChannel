@@ -1,24 +1,17 @@
 # Myth Case — phone app (Add to Home Screen)
 
-This is the **phone app** for public Myth-Weavers sheets. It runs in Safari as a home-screen web app.
-
 ## Install on iPhone / iPad
 
-1. On your phone, open Safari and go to the app URL (after this branch is pushed, jsDelivr serves it from GitHub):
-
-   **https://cdn.jsdelivr.net/gh/vinney491-dotcom/AlphaChannel@cursor/myth-weavers-viewer-3c20/MythWeaversViewer/web/index.html**
-
+1. Open in **Safari**:
+   - Live preview: https://wide-badgers-mate.loca.lt/
+   - GitHub Pages (after enabled): `https://vinney491-dotcom.github.io/AlphaChannel/`
 2. Tap **Share** → **Add to Home Screen** → **Add**
-3. Open **Myth Case** from your Home Screen
-4. Tap **Add sheet**, paste a public Myth-Weavers link, save
-5. Tap a sheet to open it on Myth-Weavers
+3. Open **Myth Case** → **Add sheet** → paste a public Myth-Weavers link
+
+If the live preview shows a localtunnel warning page first, tap through to continue.
 
 ## What it does
 
 - Saves public sheet links on your device
 - One-tap open to the live Myth-Weavers viewer
-- Works offline for your library list (sheet pages still need network)
-
-## Native iOS project
-
-For an App Store–style WebView shell (sheets stay inside the app), use the Xcode project in `MythWeaversViewer/MythWeaversViewer.xcodeproj` on a Mac.
+- Library list can work offline; sheet pages still need network

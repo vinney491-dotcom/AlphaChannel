@@ -1,38 +1,33 @@
 # Myth-Weavers Viewer (iPhone + iPad)
 
-Two ways to use public Myth-Weavers sheets on your phone:
+## Phone app — Myth Case
 
-## 1) Phone app now — Myth Case (Home Screen)
+A Home Screen web app for public Myth-Weavers sheets.
 
-Open in **Safari** on your iPhone, then **Share → Add to Home Screen**:
+### Install on your iPhone
 
-https://cdn.jsdelivr.net/gh/vinney491-dotcom/AlphaChannel@cursor/myth-weavers-viewer-3c20/MythWeaversViewer/web/index.html
+1. Open this link in **Safari**:
+   - Live preview (while the cloud agent is running): https://wide-badgers-mate.loca.lt/
+   - After GitHub Pages is enabled: `https://vinney491-dotcom.github.io/AlphaChannel/`
+2. Tap **Share** → **Add to Home Screen** → **Add**
+3. Open **Myth Case**, tap **Add sheet**, paste a public Myth-Weavers URL
 
 Source: `MythWeaversViewer/web/`
 
-## 2) Native SwiftUI shell (Mac + Xcode)
+## Native SwiftUI shell (Mac + Xcode)
 
-Universal app with an in-app `WKWebView` library:
+For an in-app WebView (sheets stay inside the app UI):
 
-1. On a Mac, open `MythWeaversViewer/MythWeaversViewer.xcodeproj`
+1. Open `MythWeaversViewer/MythWeaversViewer.xcodeproj` on a Mac
 2. Set your Team under **Signing & Capabilities**
 3. Run on your iPhone or iPad (`⌘R`)
 
 Requires **Xcode 15+** and **iOS 17+**.
 
-## What both versions do
+## What it does
 
-- Save public Myth-Weavers URLs
+- Save public Myth-Weavers URLs on your device
 - Open sheets for reading at the table
-- Support common link shapes (`sheet.html#id=…`, `/sheets/?id=…`)
+- Supports common link shapes (`sheet.html#id=…`, `/sheets/?id=…`)
 
-Private account sheets that require login are out of scope for v1.
-
-## Project layout
-
-```
-MythWeaversViewer/
-  web/                         # Myth Case phone web app
-  MythWeaversViewer.xcodeproj/ # Native iOS project
-  MythWeaversViewer/           # SwiftUI sources
-```
+Private / login-only sheets are out of scope for v1.
