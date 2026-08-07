@@ -16,8 +16,9 @@
     "AcceptsFeedback": true,
     "IsHide": false,
     "DownloadCount": 0,
-    "LastUpdate": 1786073514,
+    "LastUpdate": 1786075239,
     "RepoUrl": "https://github.com/vinney491-dotcom/AlphaChannel",
+    "IconUrl": "https://raw.githubusercontent.com/vinney491-dotcom/AlphaChannel/master/images/icon.png",
     "DownloadLinkInstall": "https://github.com/vinney491-dotcom/AlphaChannel/releases/download/v1.0.9.0/latest.zip",
     "DownloadLinkUpdate": "https://github.com/vinney491-dotcom/AlphaChannel/releases/download/v1.0.9.0/latest.zip"
   }
