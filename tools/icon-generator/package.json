@@ -1,0 +1,13 @@
+{
+  "name": "alphachannel-icon-generator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Regenerates Assets/Icons stencil PNGs from Tabler Icons (MIT).",
+  "scripts": {
+    "build": "node generate-app-icons.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.33.0"
+  }
+}

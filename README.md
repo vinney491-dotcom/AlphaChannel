@@ -85,3 +85,15 @@ dotnet build AlphaChannel.slnx
 
 `src/AlphaChannel.Plugin` is the Dalamud plugin, `src/AlphaChannel.Server` is the relay,
 `src/AlphaChannel.Contracts` is the shared wire-format library both depend on.
+
+## Tile icons (Tabler stencils)
+
+Home / Apps tiles use white-on-transparent PNGs under `src/AlphaChannel.Plugin/Assets/Icons/`,
+generated from Tabler Icons and tinted at draw time (same idea as Aetherphone).
+
+```
+cd tools/icon-generator && npm install && npm run build
+```
+
+See `docs/ART-ASSET-SPEC.md`. To continue this work in Cursor Desktop, paste
+`CURSOR-DESKTOP-HANDOFF.md` (repo root) into a new chat.

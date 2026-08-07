@@ -1,3 +1,4 @@
 bin/
 obj/
 .env
+tools/icon-generator/node_modules/

@@ -19,7 +19,7 @@ internal sealed partial class MainWindow
         var tileWidth = MathF.Min(300f, (avail - gap) / 2f);
         const float tileHeight = 120f;
 
-        if (DrawAppTile(tileWidth, tileHeight, FontAwesomeIcon.Comment, Hex(0xA78BFA),
+        if (DrawAppTile(tileWidth, tileHeight, "messages", FontAwesomeIcon.Comment, Hex(0xA78BFA),
                 "Alpha Chat", "Private E2E messages and group chats with friends."))
         {
             conversationsDirty = true;
@@ -27,7 +27,7 @@ internal sealed partial class MainWindow
         }
 
         ImGui.SameLine(0, gap);
-        if (DrawAppTile(tileWidth, tileHeight, FontAwesomeIcon.PuzzlePiece, Accent,
+        if (DrawAppTile(tileWidth, tileHeight, "plugin-hub", FontAwesomeIcon.PuzzlePiece, Accent,
                 "Plugin Hub", "See which Dalamud plugins you and your friends have enabled."))
         {
             myPluginsDirty = true;
@@ -37,7 +37,7 @@ internal sealed partial class MainWindow
         ImGui.Spacing();
         ImGui.Spacing();
 
-        if (DrawAppTile(tileWidth, tileHeight, FontAwesomeIcon.Feather, Hex(0x38BDF8),
+        if (DrawAppTile(tileWidth, tileHeight, "tweeter", FontAwesomeIcon.Feather, Hex(0x38BDF8),
                 "Tweeter", "Short posts for people you follow."))
         {
             currentPage = HomePage.Tweeter;
@@ -48,7 +48,8 @@ internal sealed partial class MainWindow
     private bool DrawAppTile(
         float width,
         float height,
-        FontAwesomeIcon icon,
+        string iconId,
+        FontAwesomeIcon iconFallback,
         Vector4 iconColor,
         string title,
         string subtitle,
@@ -68,18 +69,23 @@ internal sealed partial class MainWindow
                 var drawList = ImGui.GetWindowDrawList();
                 var iconOrigin = ImGui.GetCursorScreenPos();
                 const float disc = 44f;
+                var tint = enabled ? iconColor : MutedText;
 
                 drawList.AddRectFilled(iconOrigin, iconOrigin + new Vector2(disc, disc),
                     ImGui.GetColorU32(new Vector4(iconColor.X, iconColor.Y, iconColor.Z, enabled ? 0.24f : 0.12f)),
                     14f);
 
-                using (ImRaii.PushFont(UiBuilder.IconFont))
+                var discCenter = iconOrigin + new Vector2(disc, disc) * 0.5f;
+                if (!AppIconTextures.TryDraw(drawList, iconId, discCenter, disc, tint))
                 {
-                    var glyph = icon.ToIconString();
-                    var glyphSize = ImGui.CalcTextSize(glyph);
-                    drawList.AddText(UiBuilder.IconFont, ImGui.GetFontSize() * 1.05f,
-                        iconOrigin + new Vector2(disc, disc) / 2f - glyphSize / 2f,
-                        ImGui.GetColorU32(enabled ? iconColor : MutedText), glyph);
+                    using (ImRaii.PushFont(UiBuilder.IconFont))
+                    {
+                        var glyph = iconFallback.ToIconString();
+                        var glyphSize = ImGui.CalcTextSize(glyph);
+                        drawList.AddText(UiBuilder.IconFont, ImGui.GetFontSize() * 1.05f,
+                            discCenter - glyphSize / 2f,
+                            ImGui.GetColorU32(tint), glyph);
+                    }
                 }
 
                 ImGui.Dummy(new Vector2(disc, disc));

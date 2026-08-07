@@ -163,7 +163,7 @@ internal sealed partial class MainWindow
         var cardHeight = pad + disc + gapAfterIcon + lineH * 2f + gapAfterTitle + lineH * 2f + pad;
 
         DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.Play, Accent,
+            "watch", FontAwesomeIcon.Play, Accent,
             "Watch Videos", "YouTube, Twitch, or a link.",
             () =>
             {
@@ -173,13 +173,13 @@ internal sealed partial class MainWindow
         ImGui.SameLine(0, gap);
 
         DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.Desktop, Hex(0xA78BFA),
+            "screen", FontAwesomeIcon.Desktop, Hex(0xA78BFA),
             "Place the Screen", "Move and size the panel.",
             () => currentPage = HomePage.Screen);
         ImGui.SameLine(0, gap);
 
         DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.Users, Hex(0xF59E0B),
+            "party", FontAwesomeIcon.Users, Hex(0xF59E0B),
             "Start a Party", "Host or join a room.",
             () =>
             {
@@ -189,21 +189,21 @@ internal sealed partial class MainWindow
         ImGui.SameLine(0, gap);
 
         DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.UserFriends, Hex(0x34D399),
+            "friends", FontAwesomeIcon.UserFriends, Hex(0x34D399),
             "Friends", "Invite and join people.",
             () => currentPage = CurrentSession is null ? HomePage.Settings : HomePage.Friends);
         ImGui.SameLine(0, gap);
 
         DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.ThLarge, Hex(0x38BDF8),
+            "apps", FontAwesomeIcon.ThLarge, Hex(0x38BDF8),
             "Apps", "Chat, Hub, Tweeter.",
             () => currentPage = HomePage.Apps);
     }
 
     // Fixed-size tile: background + hit target only claim layout; copy is DrawList-wrapped inside.
     private void DrawCapabilityCard(float width, float height, float pad, float disc,
-        float gapAfterIcon, float gapAfterTitle, FontAwesomeIcon icon, Vector4 color,
-        string title, string body, Action onClick)
+        float gapAfterIcon, float gapAfterTitle, string iconId, FontAwesomeIcon iconFallback,
+        Vector4 color, string title, string body, Action onClick)
     {
         var origin = ImGui.GetCursorScreenPos();
         var size = new Vector2(width, height);
@@ -228,13 +228,17 @@ internal sealed partial class MainWindow
         var discOrigin = origin + new Vector2(pad, pad);
         drawList.AddRectFilled(discOrigin, discOrigin + new Vector2(disc, disc),
             ImGui.GetColorU32(new Vector4(color.X, color.Y, color.Z, 0.22f)), 12f);
-        using (ImRaii.PushFont(UiBuilder.IconFont))
+        var discCenter = discOrigin + new Vector2(disc, disc) * 0.5f;
+        if (!AppIconTextures.TryDraw(drawList, iconId, discCenter, disc, color))
         {
-            var glyph = icon.ToIconString();
-            var glyphSize = ImGui.CalcTextSize(glyph);
-            var iconNudge = icon == FontAwesomeIcon.Play ? new Vector2(1.5f, 0f) : Vector2.Zero;
-            drawList.AddText(discOrigin + new Vector2(disc, disc) / 2f - glyphSize / 2f + iconNudge,
-                ImGui.GetColorU32(color), glyph);
+            using (ImRaii.PushFont(UiBuilder.IconFont))
+            {
+                var glyph = iconFallback.ToIconString();
+                var glyphSize = ImGui.CalcTextSize(glyph);
+                var iconNudge = iconFallback == FontAwesomeIcon.Play ? new Vector2(1.5f, 0f) : Vector2.Zero;
+                drawList.AddText(discCenter - glyphSize / 2f + iconNudge,
+                    ImGui.GetColorU32(color), glyph);
+            }
         }
 
         var wrapWidth = MathF.Max(40f, width - pad * 2f);
@@ -303,11 +307,11 @@ internal sealed partial class MainWindow
         const float gap = 12f;
         var stepWidth = (avail - gap * 2) / 3f;
 
-        DrawHowStep(stepWidth, 1, Accent, FontAwesomeIcon.UserPlus, "Invite Friends",
+        DrawHowStep(stepWidth, 1, Accent, "invite", FontAwesomeIcon.UserPlus, "Invite Friends",
             "Add people, then host or join from Player.",
             () => currentPage = CurrentSession is null ? HomePage.Settings : HomePage.Friends);
         ImGui.SameLine(0, gap);
-        DrawHowStep(stepWidth, 2, Hex(0xA78BFA), FontAwesomeIcon.Play, "Pick Something",
+        DrawHowStep(stepWidth, 2, Hex(0xA78BFA), "watch", FontAwesomeIcon.Play, "Pick Something",
             "Paste a link or search YouTube / Twitch.",
             () =>
             {
@@ -315,13 +319,13 @@ internal sealed partial class MainWindow
                 currentPage = HomePage.Player;
             });
         ImGui.SameLine(0, gap);
-        DrawHowStep(stepWidth, 3, Hex(0x34D399), FontAwesomeIcon.Heart, "Enjoy Together",
+        DrawHowStep(stepWidth, 3, Hex(0x34D399), "enjoy", FontAwesomeIcon.Heart, "Enjoy Together",
             "Everyone stays in sync on the screen.",
             () => currentPage = HomePage.Player);
     }
 
-    private void DrawHowStep(float width, int number, Vector4 color, FontAwesomeIcon icon,
-        string title, string body, Action onClick)
+    private void DrawHowStep(float width, int number, Vector4 color, string iconId,
+        FontAwesomeIcon iconFallback, string title, string body, Action onClick)
     {
         const float pad = 12f;
         const float badge = 24f;
@@ -363,14 +367,19 @@ internal sealed partial class MainWindow
         ImGui.PopTextWrapPos();
 
         // Soft icon accent in the top-right corner (doesn't fight title layout).
-        using (ImRaii.PushFont(UiBuilder.IconFont))
+        var accentTint = new Vector4(color.X, color.Y, color.Z, 0.35f);
+        var accentCenter = origin + new Vector2(width - pad - 9f, pad + 9f);
+        if (!AppIconTextures.TryDraw(drawList, iconId, accentCenter, 18f, accentTint))
         {
-            var glyph = icon.ToIconString();
-            var glyphSize = ImGui.CalcTextSize(glyph);
-            drawList.AddText(
-                origin + new Vector2(width - pad - glyphSize.X, pad),
-                ImGui.GetColorU32(new Vector4(color.X, color.Y, color.Z, 0.35f)),
-                glyph);
+            using (ImRaii.PushFont(UiBuilder.IconFont))
+            {
+                var glyph = iconFallback.ToIconString();
+                var glyphSize = ImGui.CalcTextSize(glyph);
+                drawList.AddText(
+                    origin + new Vector2(width - pad - glyphSize.X, pad),
+                    ImGui.GetColorU32(accentTint),
+                    glyph);
+            }
         }
 
         ImGui.SetCursorScreenPos(origin);
