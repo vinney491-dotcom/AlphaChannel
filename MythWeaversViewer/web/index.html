@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a2f28" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Myth Case" />
+  <title>Myth Case</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+
+  <main class="app">
+    <header class="hero">
+      <p class="brand">Myth Case</p>
+      <h1 class="tagline">Your public Myth-Weavers sheets, one tap away.</h1>
+      <p class="lede">Save links on your phone. Open them full-screen when you need the sheet at the table.</p>
+      <div class="cta-row">
+        <button type="button" class="btn primary" id="open-add">Add sheet</button>
+        <button type="button" class="btn ghost" id="install-hint-btn">Add to Home Screen</button>
+      </div>
+    </header>
+
+    <section class="library" aria-labelledby="library-title">
+      <div class="section-head">
+        <h2 id="library-title">Library</h2>
+        <span class="count" id="sheet-count">0</span>
+      </div>
+      <div id="empty" class="empty">
+        <p>No sheets yet. Paste a public Myth-Weavers link to start.</p>
+      </div>
+      <ul id="sheet-list" class="sheet-list" hidden></ul>
+    </section>
+  </main>
+
+  <dialog class="sheet-dialog" id="add-dialog">
+    <form method="dialog" id="add-form" class="dialog-card">
+      <h2>Add sheet</h2>
+      <label>
+        Title
+        <input id="title-input" name="title" type="text" placeholder="Optional" autocomplete="off" />
+      </label>
+      <label>
+        Myth-Weavers URL
+        <input id="url-input" name="url" type="url" inputmode="url" autocomplete="off" required placeholder="https://www.myth-weavers.com/sheet.html#id=…" />
+      </label>
+      <p class="error" id="form-error" hidden></p>
+      <div class="dialog-actions">
+        <button value="cancel" class="btn ghost">Cancel</button>
+        <button value="add" class="btn primary" id="save-sheet">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet-dialog" id="hint-dialog">
+    <div class="dialog-card">
+      <h2>Put Myth Case on your Home Screen</h2>
+      <ol class="steps">
+        <li>Open this page in <strong>Safari</strong> on your iPhone.</li>
+        <li>Tap the <strong>Share</strong> button.</li>
+        <li>Choose <strong>Add to Home Screen</strong>.</li>
+        <li>Tap <strong>Add</strong>.</li>
+      </ol>
+      <div class="dialog-actions">
+        <button type="button" class="btn primary" id="close-hint">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

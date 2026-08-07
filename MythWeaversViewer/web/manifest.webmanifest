@@ -1,0 +1,21 @@
+{
+  "name": "Myth Case",
+  "short_name": "Myth Case",
+  "description": "Save and open public Myth-Weavers character sheets on your phone.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f1c18",
+  "theme_color": "#1a2f28",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
