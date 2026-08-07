@@ -1,51 +1,38 @@
 # Myth-Weavers Viewer (iPhone + iPad)
 
-Universal SwiftUI app for opening **public** Myth-Weavers character sheet links on iPhone and iPad.
+Two ways to use public Myth-Weavers sheets on your phone:
 
-## What it does
+## 1) Phone app now — Myth Case (Home Screen)
 
-- Paste a public Myth-Weavers URL into a local library
-- Open the sheet in an in-app browser (`WKWebView`)
-- Search, rename, note, share, and reload bookmarks
-- Works as a universal app (iPhone and iPad split view)
+Open in **Safari** on your iPhone, then **Share → Add to Home Screen**:
 
-## Supported URL shapes
+https://cdn.jsdelivr.net/gh/vinney491-dotcom/AlphaChannel@cursor/myth-weavers-viewer-3c20/MythWeaversViewer/web/index.html
 
-- Legacy: `https://www.myth-weavers.com/sheet.html#id=12345`
-- Query / path forms under `myth-weavers.com` (sheet id is extracted when present)
+Source: `MythWeaversViewer/web/`
 
-Private account sheets that require login are out of scope for this first version.
+## 2) Native SwiftUI shell (Mac + Xcode)
 
-## Open in Xcode
+Universal app with an in-app `WKWebView` library:
 
 1. On a Mac, open `MythWeaversViewer/MythWeaversViewer.xcodeproj`
-2. Select your Team under **Signing & Capabilities** (set a real bundle id if you like)
-3. Pick an iPhone or iPad simulator (or your device)
-4. Run (`⌘R`)
+2. Set your Team under **Signing & Capabilities**
+3. Run on your iPhone or iPad (`⌘R`)
 
 Requires **Xcode 15+** and **iOS 17+**.
 
-## Use it
+## What both versions do
 
-1. Tap **+**
-2. Paste a public sheet URL
-3. Optionally set a title / notes
-4. Tap the sheet to view it
+- Save public Myth-Weavers URLs
+- Open sheets for reading at the table
+- Support common link shapes (`sheet.html#id=…`, `/sheets/?id=…`)
+
+Private account sheets that require login are out of scope for v1.
 
 ## Project layout
 
 ```
 MythWeaversViewer/
-  MythWeaversViewer.xcodeproj/
-  MythWeaversViewer/
-    MythWeaversViewerApp.swift
-    Models/CharacterSheet.swift
-    Services/SheetLibrary.swift
-    Views/
+  web/                         # Myth Case phone web app
+  MythWeaversViewer.xcodeproj/ # Native iOS project
+  MythWeaversViewer/           # SwiftUI sources
 ```
-
-## Next ideas
-
-- Safari / share-sheet “Open in Myth-Weavers Viewer”
-- Optional Myth-Weavers sign-in for private sheets
-- Native summary strip (HP / AC) for systems we can parse reliably
