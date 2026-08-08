@@ -85,3 +85,9 @@ dotnet build AlphaChannel.slnx
 
 `src/AlphaChannel.Plugin` is the Dalamud plugin, `src/AlphaChannel.Server` is the relay,
 `src/AlphaChannel.Contracts` is the shared wire-format library both depend on.
+
+## TexTools fork (Linux work)
+
+`tools/textools/` is a GPL-3.0 vendored fork of FFXIV TexTools + xivModdingFramework for
+cross-platform / Linux porting. It is a separate program from the plugin — see
+`tools/textools/README.AlphaChannel.md`.

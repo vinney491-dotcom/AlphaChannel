@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyVersion>0.0.0.0</AssemblyVersion>
+    <Version>0.0.0.0</Version>
+    <Authors>--</Authors>
+    <Product>--</Product>
+    <Description>A stub library with version 0.0.0.0 for use when forcing updates.</Description>
+    <PackageId>ForceUpdateAssembly</PackageId>
+    <AssemblyName>Branch Change Update</AssemblyName>
+    <Configurations>Debug;Release</Configurations>
+    <OutputPath>..\\bin\\$(Configuration)\\lib\\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNetZip.Original" Version="2025.2.15" />
+  </ItemGroup>
+
+</Project>

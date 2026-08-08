@@ -1,0 +1,85 @@
+﻿<UserControl
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:FFXIV_TexTools.Views"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls" x:Class="FFXIV_TexTools.Views.ModelViewerOptionsView"
+             mc:Ignorable="d" 
+             xmlns:resx="clr-namespace:FFXIV_TexTools.Resources"
+             resx:Localization.Enabled="True"    
+             d:DesignHeight="450" d:DesignWidth="250">
+    <Grid >
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <Button Margin="5"  Content="Shape Deformations" IsEnabled="{Binding ShapeButtonEnabled}"  Click="OpenShapesMenu_Click"/>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="5">
+            <Grid.RowDefinitions>
+                <RowDefinition></RowDefinition>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition></ColumnDefinition>
+                <ColumnDefinition></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <Label Content="Colorset Row:" HorizontalAlignment="Right" VerticalAlignment="Center"></Label>
+            <ComboBox Grid.Column="1" VerticalAlignment="Center" ItemsSource="{Binding Path=ColorsetRowSource}" DisplayMemberPath="Key" SelectedValuePath="Value" SelectedValue="{Binding Path=HighlightedColorsetRow}" IsEnabled="{Binding Path=ColorsetButtonEnabled}"></ComboBox>
+        </Grid>
+        
+        <Grid Grid.Row="2" Margin="5">
+            <Grid.RowDefinitions>
+                <RowDefinition></RowDefinition>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition></ColumnDefinition>
+                <ColumnDefinition></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <Label Content="Visible Mesh:" HorizontalAlignment="Right" VerticalAlignment="Center"></Label>
+            <ComboBox x:Name="VisibleMeshComboBox" Grid.Column="1" VerticalAlignment="Center" ItemsSource="{Binding Path=VisibleMeshSource}" DisplayMemberPath="Key" SelectedValuePath="Value" SelectedValue="{Binding Path=VisibleMesh}"></ComboBox>
+        </Grid>
+
+        
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition></RowDefinition>
+            </Grid.RowDefinitions>
+            
+            <mah:ToggleSwitch Grid.Row="0" IsChecked="{Binding Path=MoveLightsWithCamera}" Margin="5"
+                              Header="Light Movement"
+                              Style="{StaticResource MahApps.Metro.Styles.ToggleSwitch.Win10}"
+                              OffLabel="Static"
+                              OnLabel="Mobile" />
+
+            <mah:ToggleSwitch Grid.Row="0" Grid.Column="1" IsChecked="{Binding Path=AllowCameraReset}" Margin="5"
+                              Header="Camera Reset"
+                              Style="{StaticResource MahApps.Metro.Styles.ToggleSwitch.Win10}"
+                              OffLabel="Disabled"
+                              OnLabel="Enabled" />
+        </Grid>
+        <Grid Grid.Row="4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Label Grid.Row="0" Content="{Binding ReflectionLabel, FallbackValue=Reflection}" Margin="5"/>
+            <Slider Grid.Row="1" Margin="5" AutoToolTipPlacement="TopLeft" Value="{Binding ReflectionValue}" Minimum="-1" Maximum="100"/>
+        </Grid>
+    </Grid>
+</UserControl>
