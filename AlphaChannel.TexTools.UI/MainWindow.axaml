@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:AlphaChannel.TexTools.UI"
         x:Class="AlphaChannel.TexTools.UI.MainWindow"
         Title="FFXIV TexTools"
         Width="1280" Height="720"
@@ -23,6 +24,7 @@
         <MenuItem Header="_View">
           <MenuItem Header="Load Item List" Click="OnLoadItems" />
           <MenuItem Header="Focus Item Search" Click="OnFocusItemSearch" />
+          <MenuItem Header="Open Display Window…" Click="OnOpenDisplayWindow" />
           <Separator />
           <MenuItem Header="Show Log Tab" Click="OnShowLogTab" />
         </MenuItem>
@@ -101,13 +103,21 @@
         <Border Classes="tt-group" Grid.Column="2" Padding="0">
           <TabControl Name="MainTabs" Padding="4">
             <TabItem Header="Item Files">
-              <DockPanel Margin="8">
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+              <DockPanel Margin="4">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="4,4,4,8">
                   <Button Content="Extract Selected…" Click="OnExtractSelectedItemFile" Classes="accent" />
                   <Button Content="Copy Path" Click="OnCopySelectedFilePath" />
-                  <TextBox Name="ExtractPathBox" Width="320" Watermark="Internal path…" />
+                  <Button Content="Pop Out Display" Click="OnOpenDisplayWindow" />
+                  <TextBox Name="ExtractPathBox" Width="280" Watermark="Internal path…" />
                 </StackPanel>
-                <ListBox Name="ItemFilesList" />
+                <Grid ColumnDefinitions="*,5,1.4*">
+                  <ListBox Name="ItemFilesList" SelectionChanged="OnItemFileSelected" />
+                  <GridSplitter Grid.Column="1" Width="5" ResizeDirection="Columns"
+                                Background="{StaticResource TtBorderBrush}" />
+                  <Border Grid.Column="2" Classes="tt-group">
+                    <local:DisplayPanel Name="MainDisplay" />
+                  </Border>
+                </Grid>
               </DockPanel>
             </TabItem>
 
@@ -169,9 +179,9 @@
                   <Button Content="Open Folder" Click="OnOpenBackups" />
                   <Button Content="Refresh" Click="OnRefreshBackups" />
                 </StackPanel>
-                <TextBlock Margin="0,12,0,0" FontWeight="SemiBold" Text="Not in native shell yet" />
+                <TextBlock Margin="0,12,0,0" FontWeight="SemiBold" Text="Display window" />
                 <TextBlock Foreground="{StaticResource TtMutedBrush}" TextWrapping="Wrap"
-                           Text="3D model/texture viewers, visual material editors, and live DAT modlist remain Windows/WPF-only." />
+                           Text="Texture preview + model/material info work natively. Interactive Helix 3D viewport and visual material editors remain Windows/WPF-only." />
               </StackPanel>
             </TabItem>
 

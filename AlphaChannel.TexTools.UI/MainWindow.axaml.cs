@@ -25,6 +25,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        MainDisplay.StatusChanged += msg => BusyText.Text = msg;
+        MainDisplay.ExportRequested = async path =>
+        {
+            ExtractPathBox.Text = path;
+            OnExtractFile(null, new RoutedEventArgs());
+            await Task.CompletedTask;
+        };
         RefreshPaths();
         GamePathBox.Text = ConsoleConfig.Get().XivPath
                            ?? ConsoleConfig.ResolveDefaultXivPath()
@@ -97,9 +104,10 @@ public partial class MainWindow : Window
             this,
             "FFXIV TexTools (AlphaChannel Linux)\n\n" +
             "Classic TexTools-style shell on Avalonia.\n" +
+            "Display: texture preview (R/G/B/A), model & material info, pop-out Item Viewer.\n" +
             "Core workflows: Penumbra import, modpack upgrade, extract, item browser.\n\n" +
             "Upstream: TexTools / xivModdingFramework (GPL-3.0).\n" +
-            "3D/texture viewers are not ported yet — use ConsoleTools or Wine classic UI if needed.",
+            "Interactive Helix 3D viewport remains Windows/WPF-only.",
             "About FFXIV TexTools");
     }
 
@@ -320,9 +328,37 @@ public partial class MainWindow : Window
             var files = await TexToolsActions.ListItemFilesAsync(row.Item, log);
             ItemFilesList.ItemsSource = files;
             ItemsStatusBox.Text = $"{row.Display} — {files.Count} files";
-            if (files.Count > 0)
+            var prefer = DisplayPreview.PreferDisplayFile(files);
+            if (!string.IsNullOrWhiteSpace(prefer))
+            {
+                ExtractPathBox.Text = prefer;
+                ItemFilesList.SelectedItem = prefer;
+            }
+            else if (files.Count > 0)
+            {
                 ExtractPathBox.Text = files[0];
+            }
         });
+    }
+
+    private async void OnItemFileSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        if (ItemFilesList.SelectedItem is not string path) return;
+        ExtractPathBox.Text = path;
+        MainTabs.SelectedIndex = 0;
+        await MainDisplay.ShowPathAsync(path, new Progress<string>(msg => BusyText.Text = msg));
+    }
+
+    private void OnOpenDisplayWindow(object? sender, RoutedEventArgs e)
+    {
+        var path = ItemFilesList.SelectedItem as string ?? ExtractPathBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            BusyText.Text = "Select an item file first.";
+            return;
+        }
+        var win = new DisplayWindow(path);
+        win.Show(this);
     }
 
     private async void OnExtractSelectedItemFile(object? sender, RoutedEventArgs e)
