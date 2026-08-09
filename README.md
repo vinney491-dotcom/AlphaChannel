@@ -20,8 +20,21 @@ Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 | Item browser (search, list files, extract) | Done |
 | Extract by path, list root, wrap/unwrap | Done |
 | Open Penumbra / ModPacks folders | Done |
+| Browse / search Penumbra library + Reload Mods API | Done |
+| Desktop / app-menu launcher (`install-desktop-launcher.sh`) | Done |
+| Tattoo / decal → `.tex` Penumbra folder | Done |
+| Simple colorset viewer + PNG export | Done |
 | Index backup status + create | Done |
-| 3D viewers, visual material editors, live DAT modlist | Not yet (WPF/Helix) |
+| Helix 3D / full material editors / DAT while game running | **Non-goal** (use Wine classic or Penumbra) |
+| Universal body / Lalafell outfit upscale | **Spike only** — see `docs/BODY_UPSCALE_SPIKE.md` |
+| Dance / timeline authoring | **Non-goal** |
+
+### Non-goals (Avalonia fork)
+
+- Stuffing this into the AlphaChannel Dalamud plugin (GPL boundary).
+- HelixToolkit 3D viewport parity with WPF TexTools.
+- Writing ENABLE/DAT game files while FFXIV is running.
+- One-click “any body → any body / Lalafell” mesh conversion without paired refs.
 
 ### CachyOS / Arch
 

@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private List<ItemRow> _allItems = new();
     private ItemRow? _currentItem;
     private string? _currentFilePath;
+    private List<PenumbraModEntry> _penumbraMods = new();
 
     private sealed class FileChoice
     {
@@ -211,6 +212,7 @@ public partial class MainWindow : Window
     {
         ShowWorkspaceChrome();
         RefreshLibraryInfo();
+        _ = RefreshPenumbraLibraryAsync();
         OnRefreshBackups(null!, new RoutedEventArgs());
         await RunBusyAsync("Initializing…", async log =>
         {
@@ -413,13 +415,34 @@ public partial class MainWindow : Window
 
     private async void OnImportPenumbra(object? sender, RoutedEventArgs e)
     {
+        if (!await EnsurePenumbraFolderAsync())
+            return;
         var src = await PickModpackOpenAsync("Import modpack to Penumbra");
         if (src == null) return;
         await RunBusyAsync("Importing to Penumbra…", async log =>
         {
             var dest = await TexToolsActions.ImportToPenumbraAsync(src, log);
             log.Report($"Done: {dest}");
+            await RefreshPenumbraLibraryAsync();
         });
+        ExtraPanel.IsVisible = true;
+    }
+
+    private async Task<bool> EnsurePenumbraFolderAsync()
+    {
+        var dir = PenumbraAPI.GetPenumbraDirectory();
+        if (!string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir))
+            return true;
+
+        await MessageBox.ShowAsync(
+            this,
+            "Penumbra mod folder is not set.\n\n" +
+            "Choose the folder Penumbra uses as its root (the directory that contains individual mod folders).\n\n" +
+            PenumbraAPI.DescribePenumbraDiscovery(),
+            "Set Penumbra folder");
+        OnSetPenumbraFolder(null, new RoutedEventArgs());
+        dir = PenumbraAPI.GetPenumbraDirectory();
+        return !string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir);
     }
 
     private async void OnUpgradeModpack(object? sender, RoutedEventArgs e)
@@ -855,9 +878,86 @@ public partial class MainWindow : Window
 
         ConsoleConfig.Update(c => c.PenumbraModDirectory = Path.GetFullPath(folder));
         RefreshLibraryInfo();
+        await RefreshPenumbraLibraryAsync();
         AppendLibrary($"Penumbra mod directory set to:\n{Path.GetFullPath(folder)}\n\n{PenumbraAPI.DescribePenumbraDiscovery()}");
         BusyText.Text = $"Penumbra folder: {Path.GetFullPath(folder)}";
         ExtraPanel.IsVisible = true;
+    }
+
+    private async void OnRefreshPenumbraLibrary(object? sender, RoutedEventArgs e)
+        => await RefreshPenumbraLibraryAsync();
+
+    private void OnPenumbraSearchKeyUp(object? sender, KeyEventArgs e) => ApplyPenumbraFilter();
+
+    private async Task RefreshPenumbraLibraryAsync()
+    {
+        try
+        {
+            _penumbraMods = (await PenumbraLibrary.ListModsAsync()).ToList();
+            ApplyPenumbraFilter();
+            RefreshLibraryInfo();
+        }
+        catch (Exception ex)
+        {
+            AppendLibrary("Penumbra library refresh failed: " + ex.Message);
+        }
+    }
+
+    private void ApplyPenumbraFilter()
+    {
+        var q = PenumbraSearchBox.Text?.Trim() ?? "";
+        IEnumerable<PenumbraModEntry> view = _penumbraMods;
+        if (!string.IsNullOrEmpty(q))
+        {
+            view = _penumbraMods.Where(m =>
+                m.Display.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || m.FolderPath.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+        PenumbraModsList.ItemsSource = view.ToList();
+    }
+
+    private void OnOpenSelectedPenumbraMod(object? sender, RoutedEventArgs e)
+    {
+        if (PenumbraModsList.SelectedItem is not PenumbraModEntry entry)
+        {
+            BusyText.Text = "Select a Penumbra mod in the library list.";
+            return;
+        }
+        OpenPath(entry.FolderPath);
+    }
+
+    private async void OnReloadSelectedPenumbraMod(object? sender, RoutedEventArgs e)
+    {
+        if (PenumbraModsList.SelectedItem is not PenumbraModEntry entry)
+        {
+            BusyText.Text = "Select a Penumbra mod in the library list.";
+            return;
+        }
+        var ok = await PenumbraLibrary.ReloadAsync(entry);
+        BusyText.Text = ok
+            ? $"Penumbra reload OK: {entry.Name}"
+            : $"Reload failed for {entry.Name} (is the game + Penumbra API on :42069 running?).";
+        AppendLibrary(BusyText.Text);
+    }
+
+    private void OnOpenTattooConverter(object? sender, RoutedEventArgs e)
+    {
+        var win = new TattooConverterWindow();
+        win.Show(this);
+    }
+
+    private async void OnOpenColorset(object? sender, RoutedEventArgs e)
+    {
+        var path = (MaterialCombo.SelectedItem as FileChoice)?.Path
+                   ?? _currentFilePath;
+        if (string.IsNullOrWhiteSpace(path) || !path.EndsWith(".mtrl", StringComparison.OrdinalIgnoreCase))
+        {
+            BusyText.Text = "Select a material (.mtrl) in the Material combo first.";
+            return;
+        }
+        var win = new ColorsetWindow();
+        win.Show(this);
+        await win.LoadPathAsync(path);
     }
 
     private void OnOpenPenumbra(object? sender, RoutedEventArgs e)

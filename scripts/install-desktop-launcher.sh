@@ -31,14 +31,14 @@ Type=Application
 Version=1.0
 Name=AlphaChannel TexTools
 GenericName=FFXIV Modding Tools
-Comment=Native Linux TexTools — Penumbra import, upgrade, extract, library tools
+Comment=Native Linux TexTools — Penumbra library, tattoos, colorsets, import/upgrade
 Exec=${LAUNCHER}
 Icon=${APP_ID}
 Terminal=false
 Categories=Game;Utility;
 StartupNotify=true
 StartupWMClass=AlphaChannel.TexTools.UI
-Keywords=FFXIV;TexTools;modpack;ttmp2;Penumbra;
+Keywords=FFXIV;TexTools;modpack;ttmp2;Penumbra;tattoo;colorset;
 EOF
   chmod +x "$out"
 }

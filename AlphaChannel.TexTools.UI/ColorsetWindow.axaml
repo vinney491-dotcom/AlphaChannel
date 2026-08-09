@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="AlphaChannel.TexTools.UI.ColorsetWindow"
+        Title="Colorset"
+        Width="720" Height="560"
+        MinWidth="520" MinHeight="400"
+        Background="{StaticResource TtChromeBrush}"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="12">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Content="Export PNG…" Classes="accent" Click="OnExport" Name="ExportButton" IsEnabled="False" />
+      <Button Content="Close" Click="OnClose" />
+    </StackPanel>
+    <Grid ColumnDefinitions="*,8,220">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Name="HeaderText" FontWeight="SemiBold" Margin="0,0,0,8"
+                   Text="Select a .mtrl (Material combo) then open Colorset." TextWrapping="Wrap" />
+        <TextBlock DockPanel.Dock="Top" Foreground="{StaticResource TtMutedBrush}" Margin="0,0,0,8" FontSize="11"
+                   Text="Simplified viewer — diffuse / specular / emissive per row. Not full classic colorset editor."
+                   TextWrapping="Wrap" />
+        <ListBox Name="RowsList" />
+      </DockPanel>
+      <Border Grid.Column="2" Background="{StaticResource TtViewportBrush}" BorderBrush="{StaticResource TtBorderBrush}"
+              BorderThickness="1">
+        <Image Name="PreviewImage" Stretch="Uniform" Margin="8" />
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>
