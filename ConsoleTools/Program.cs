@@ -237,22 +237,44 @@ namespace ConsoleTools
         {
             if (_Args.Length < 3)
             {
+                Console.WriteLine("Usage: ConsoleTools /upgrade [ModpackFilePath] [DestFilePath]");
                 return -1;
             }
 
             var src = _Args[1];
             var dest = _Args[2];
-            System.Console.Write("Upgrading Modpack: " + src);
+            if (!File.Exists(src))
+            {
+                Console.WriteLine("Source modpack not found: " + src);
+                return -1;
+            }
+
+            Console.WriteLine("Upgrading Modpack: " + src);
+            Console.WriteLine("Destination: " + dest);
+            Console.WriteLine("Game path: " + (ConsoleConfig.Get().XivPath ?? "(unset)"));
 
             try
             {
-                await xivModdingFramework.Mods.ModpackUpgrader.UpgradeModpack(src, dest);
-
-                System.Console.Write("Upgraded Modpack saved to: " + dest);
+                var anyChanges = await xivModdingFramework.Mods.ModpackUpgrader.UpgradeModpack(src, dest);
+                if (anyChanges)
+                {
+                    Console.WriteLine("Upgraded Modpack saved to: " + dest);
+                }
+                else if (File.Exists(dest))
+                {
+                    Console.WriteLine("No Dawntrail changes needed; wrote/copied to: " + dest);
+                }
+                else
+                {
+                    // Upstream returns false without writing when nothing changed.
+                    File.Copy(src, dest, overwrite: true);
+                    Console.WriteLine("No Dawntrail changes needed; copied original to: " + dest);
+                }
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(ex);
+                Console.WriteLine("Upgrade failed:");
+                Console.WriteLine(ex.ToString());
                 return -1;
             }
             return 0;
