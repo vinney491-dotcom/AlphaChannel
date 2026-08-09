@@ -1,7 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using System;
 using System.Collections.Generic;
@@ -52,6 +54,7 @@ public partial class MainWindow : Window
         WorkspacePathLabel.Text = $"Game: {path}";
         SetupPanel.IsVisible = false;
         WorkspacePanel.IsVisible = true;
+        Title = "FFXIV TexTools";
     }
 
     private void ShowSetup()
@@ -61,9 +64,66 @@ public partial class MainWindow : Window
         GameSession.Reset();
         RefreshPaths();
         UpdateContinueEnabled();
+        Title = "FFXIV TexTools — Setup";
     }
 
     private void OnChangePath(object? sender, RoutedEventArgs e) => ShowSetup();
+
+    private void OnFocusItemSearch(object? sender, RoutedEventArgs e)
+    {
+        ItemSearchBox.Focus();
+    }
+
+    private void OnShowLogTab(object? sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 5;
+    }
+
+    private void OnThemeLight(object? sender, RoutedEventArgs e)
+    {
+        if (Application.Current is not null)
+            Application.Current.RequestedThemeVariant = ThemeVariant.Light;
+    }
+
+    private void OnThemeDark(object? sender, RoutedEventArgs e)
+    {
+        if (Application.Current is not null)
+            Application.Current.RequestedThemeVariant = ThemeVariant.Dark;
+    }
+
+    private async void OnAbout(object? sender, RoutedEventArgs e)
+    {
+        await MessageBox.ShowAsync(
+            this,
+            "FFXIV TexTools (AlphaChannel Linux)\n\n" +
+            "Classic TexTools-style shell on Avalonia.\n" +
+            "Core workflows: Penumbra import, modpack upgrade, extract, item browser.\n\n" +
+            "Upstream: TexTools / xivModdingFramework (GPL-3.0).\n" +
+            "3D/texture viewers are not ported yet — use ConsoleTools or Wine classic UI if needed.",
+            "About FFXIV TexTools");
+    }
+
+    private void OnSiteXivModArchive(object? sender, RoutedEventArgs e)
+        => OpenExternalUrl("https://www.xivmodarchive.com/");
+
+    private void OnSiteNexus(object? sender, RoutedEventArgs e)
+        => OpenExternalUrl("https://www.nexusmods.com/finalfantasy14");
+
+    private static void OpenExternalUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true,
+            });
+        }
+        catch
+        {
+            // ignore
+        }
+    }
 
     private void OnRefresh(object? sender, RoutedEventArgs e)
     {

@@ -1,214 +1,220 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="AlphaChannel.TexTools.UI.MainWindow"
-        Title="AlphaChannel TexTools"
-        Width="980" Height="680"
-        MinWidth="720" MinHeight="520">
+        Title="FFXIV TexTools"
+        Width="1280" Height="720"
+        MinWidth="900" MinHeight="560"
+        Background="{StaticResource TtChromeBrush}"
+        WindowStartupLocation="CenterScreen">
   <Panel>
-    <!-- Setup -->
-    <Grid Name="SetupPanel" Margin="24" RowDefinitions="Auto,Auto,Auto,*,Auto" IsVisible="True">
-      <TextBlock Grid.Row="0" FontSize="28" FontWeight="SemiBold" Text="AlphaChannel TexTools" />
-      <TextBlock Grid.Row="1" Margin="0,8,0,16" Opacity="0.75" TextWrapping="Wrap"
-                 Text="Set your FFXIV install, then continue. This is the native Linux shell — Penumbra-first modpack tools, extract, and maintenance." />
-      <Border Grid.Row="2" Padding="12" Margin="0,0,0,12" Background="#18000000" CornerRadius="6">
-        <StackPanel Spacing="8">
-          <TextBlock FontWeight="SemiBold" Text="FFXIV install" />
-          <Grid ColumnDefinitions="*,Auto,Auto">
-            <TextBox Grid.Column="0" Name="GamePathBox" Watermark="/path/to/game/sqpack/ffxiv" Margin="0,0,8,0" />
-            <Button Grid.Column="1" Content="Browse…" Click="OnBrowseInstall" Margin="0,0,8,0" />
-            <Button Grid.Column="2" Content="Save" Click="OnSavePath" />
-          </Grid>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Read launcher.ini" Click="OnReadLauncherIni" />
-            <Button Content="Use ~/.xlcore/ffxiv" Click="OnUseXlcore" />
-          </StackPanel>
-          <TextBlock Name="PathStatus" Opacity="0.8" TextWrapping="Wrap" />
-        </StackPanel>
+    <!-- Classic TexTools shell: menu + Item List | detail -->
+    <DockPanel Name="WorkspacePanel" IsVisible="False">
+      <Menu DockPanel.Dock="Top" Background="{StaticResource TtMenuBrush}">
+        <MenuItem Header="_Mods">
+          <MenuItem Header="Import Modpack to Penumbra…" Click="OnImportPenumbra" />
+          <MenuItem Header="Upgrade Modpack…" Click="OnUpgradeModpack" />
+          <MenuItem Header="Resave / Convert Modpack…" Click="OnResaveModpack" />
+          <Separator />
+          <MenuItem Header="Batch Upgrade Folder…" Click="OnBatchUpgrade" />
+          <Separator />
+          <MenuItem Header="Open Penumbra Mods Folder" Click="OnOpenPenumbra" />
+          <MenuItem Header="Open TexTools ModPacks Folder" Click="OnOpenModPacks" />
+        </MenuItem>
+        <MenuItem Header="_View">
+          <MenuItem Header="Load Item List" Click="OnLoadItems" />
+          <MenuItem Header="Focus Item Search" Click="OnFocusItemSearch" />
+          <Separator />
+          <MenuItem Header="Show Log Tab" Click="OnShowLogTab" />
+        </MenuItem>
+        <MenuItem Header="_Tools">
+          <MenuItem Header="Extract File…" Click="OnExtractFile" />
+          <MenuItem Header="Wrap File…" Click="OnWrapFile" />
+          <MenuItem Header="Unwrap File…" Click="OnUnwrapFile" />
+          <Separator />
+          <MenuItem Header="Dawntrail Upgrades">
+            <MenuItem Header="Upgrade Modpack…" Click="OnUpgradeModpack" />
+            <MenuItem Header="Batch Upgrade Folder…" Click="OnBatchUpgrade" />
+          </MenuItem>
+        </MenuItem>
+        <MenuItem Header="_Options">
+          <MenuItem Header="Settings…" Click="OnChangePath" />
+          <MenuItem Header="Open TexTools Data Folder" Click="OnOpenDataRoot" />
+          <Separator />
+          <MenuItem Header="Theme">
+            <MenuItem Header="Light" Click="OnThemeLight" />
+            <MenuItem Header="Dark" Click="OnThemeDark" />
+          </MenuItem>
+        </MenuItem>
+        <MenuItem Header="_Help">
+          <MenuItem Header="Backup Index Files…" Click="OnCreateBackups" />
+          <MenuItem Header="Open Backups Folder" Click="OnOpenBackups" />
+          <MenuItem Header="Refresh Backup Status" Click="OnRefreshBackups" />
+          <Separator />
+          <MenuItem Header="Check For Problems (Doctor)" Click="OnRunDoctor" />
+          <Separator />
+          <MenuItem Header="About TexTools" Click="OnAbout" />
+        </MenuItem>
+        <MenuItem Header="Mod _Sites">
+          <MenuItem Header="XIV Mod Archive" Click="OnSiteXivModArchive" />
+          <MenuItem Header="Nexus Mods" Click="OnSiteNexus" />
+        </MenuItem>
+      </Menu>
+
+      <!-- Bottom status (classic StatusTextBox area + path) -->
+      <Border DockPanel.Dock="Bottom" Background="{StaticResource TtStatusBrush}"
+              BorderBrush="{StaticResource TtBorderBrush}" BorderThickness="0,1,0,0" Padding="8,4">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Name="BusyText" Text="Ready." TextWrapping="Wrap" VerticalAlignment="Center"
+                     Foreground="{StaticResource TtTextBrush}" FontSize="12" />
+          <TextBlock Grid.Column="1" Name="WorkspacePathLabel" Foreground="{StaticResource TtMutedBrush}"
+                     Margin="16,0,0,0" VerticalAlignment="Center" FontSize="11" />
+        </Grid>
       </Border>
-      <TextBox Grid.Row="3" Name="PathsBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-               MinHeight="120" FontFamily="monospace" />
-      <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,16,0,0">
-        <Button Content="Refresh" Click="OnRefresh" />
-        <Button Name="ContinueButton" Content="Continue →" Click="OnContinue" IsEnabled="False" />
-      </StackPanel>
-    </Grid>
 
-    <!-- Main shell -->
-    <DockPanel Name="WorkspacePanel" Margin="16" IsVisible="False">
-      <Grid DockPanel.Dock="Top" Margin="0,0,0,12" ColumnDefinitions="*,Auto">
-        <StackPanel>
-          <TextBlock FontSize="22" FontWeight="SemiBold" Text="AlphaChannel TexTools" />
-          <TextBlock Name="WorkspacePathLabel" Opacity="0.7" TextWrapping="Wrap" />
-        </StackPanel>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-          <Button Content="Change path…" Click="OnChangePath" />
-        </StackPanel>
-      </Grid>
-
-      <Border DockPanel.Dock="Bottom" Margin="0,12,0,0" Padding="8" Background="#14000000" CornerRadius="4">
-        <TextBlock Name="BusyText" Opacity="0.85" TextWrapping="Wrap" Text="Ready." />
-      </Border>
-
-      <TabControl Name="MainTabs">
-        <!-- Modpacks -->
-        <TabItem Header="Modpacks">
-          <ScrollViewer>
-            <StackPanel Margin="12" Spacing="14">
-              <TextBlock Opacity="0.75" TextWrapping="Wrap"
-                         Text="Same core workflows as classic TexTools Mods menu for Penumbra users: upgrade, import into the Penumbra library, resave/convert formats." />
-
-              <Border Padding="12" Background="#12000000" CornerRadius="6">
-                <StackPanel Spacing="8">
-                  <TextBlock FontWeight="SemiBold" Text="Import to Penumbra" />
-                  <TextBlock Opacity="0.7" TextWrapping="Wrap"
-                             Text="Upgrade for Dawntrail and write a unique folder into your Penumbra mod directory (then try API reload)." />
-                  <Button Content="Import modpack to Penumbra…" Click="OnImportPenumbra" HorizontalAlignment="Left" />
-                </StackPanel>
-              </Border>
-
-              <Border Padding="12" Background="#12000000" CornerRadius="6">
-                <StackPanel Spacing="8">
-                  <TextBlock FontWeight="SemiBold" Text="Upgrade modpack" />
-                  <TextBlock Opacity="0.7" Text="Dawntrail /upgrade → new .ttmp2 / .pmp file." />
-                  <Button Content="Upgrade modpack…" Click="OnUpgradeModpack" HorizontalAlignment="Left" />
-                </StackPanel>
-              </Border>
-
-              <Border Padding="12" Background="#12000000" CornerRadius="6">
-                <StackPanel Spacing="8">
-                  <TextBlock FontWeight="SemiBold" Text="Resave / convert" />
-                  <TextBlock Opacity="0.7" TextWrapping="Wrap"
-                             Text="Re-encode a modpack. Change extension (.ttmp2 ↔ .pmp) or write an unzipped PMP folder." />
-                  <Button Content="Resave modpack…" Click="OnResaveModpack" HorizontalAlignment="Left" />
-                </StackPanel>
-              </Border>
-
-              <Border Padding="12" Background="#12000000" CornerRadius="6">
-                <StackPanel Spacing="8">
-                  <TextBlock FontWeight="SemiBold" Text="Batch upgrade folder" />
-                  <TextBlock Opacity="0.7" Text="Upgrade every modpack in a folder into another folder." />
-                  <Button Content="Batch upgrade folder…" Click="OnBatchUpgrade" HorizontalAlignment="Left" />
-                </StackPanel>
-              </Border>
-            </StackPanel>
-          </ScrollViewer>
-        </TabItem>
-
-        <!-- Items -->
-        <TabItem Header="Items">
-          <Grid Margin="12" ColumnDefinitions="2*,3*" RowDefinitions="Auto,*,Auto">
-            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Opacity="0.75" TextWrapping="Wrap" Margin="0,0,0,8"
-                       Text="Browse gear/character/UI items (classic left-tree). Load once, search, select → list files → extract." />
-            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
-              <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                <TextBox Grid.Column="0" Name="ItemSearchBox" Watermark="Search items…" Margin="0,0,8,0"
+      <!-- Classic 1 : 3 split -->
+      <Grid Margin="5" ColumnDefinitions="*,5,3*">
+        <Border Classes="tt-group" Grid.Column="0">
+          <DockPanel>
+            <Border DockPanel.Dock="Top" Background="{StaticResource TtAccentBrush}" Padding="8,4" Margin="0,0,0,-1">
+              <TextBlock Text="Item List" Foreground="White" FontWeight="SemiBold" FontSize="13" />
+            </Border>
+            <Border DockPanel.Dock="Top" Padding="8,8,8,0">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBox Grid.Column="0" Name="ItemSearchBox" Watermark="Search items…" Margin="0,0,6,0"
                          KeyUp="OnItemSearchKeyUp" />
-                <Button Grid.Column="1" Content="Load items" Click="OnLoadItems" />
+                <Button Grid.Column="1" Content="Load" Click="OnLoadItems" Classes="accent" />
               </Grid>
-              <ListBox Name="ItemsList" MinHeight="320" SelectionChanged="OnItemSelected" />
-            </StackPanel>
-            <DockPanel Grid.Row="1" Grid.Column="1">
-              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-                <Button Content="Extract selected file…" Click="OnExtractSelectedItemFile" />
-                <Button Content="Copy path" Click="OnCopySelectedFilePath" />
-              </StackPanel>
-              <ListBox Name="ItemFilesList" />
-            </DockPanel>
-            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Name="ItemsStatusBox" Opacity="0.75" Margin="0,8,0,0" />
-          </Grid>
-        </TabItem>
+            </Border>
+            <Border DockPanel.Dock="Bottom" Padding="8,6" BorderBrush="{StaticResource TtBorderBrush}"
+                    BorderThickness="0,1,0,0" Background="{StaticResource TtStatusBrush}">
+              <TextBlock Name="ItemsStatusBox" Foreground="{StaticResource TtMutedBrush}"
+                         TextWrapping="Wrap" TextAlignment="Center" FontSize="11"
+                         Text="Click Load to populate the item list." />
+            </Border>
+            <ListBox Name="ItemsList" Margin="8,8,8,0" SelectionChanged="OnItemSelected" />
+          </DockPanel>
+        </Border>
 
-        <!-- Extract -->
-        <TabItem Header="Extract / Tools">
-          <ScrollViewer>
-            <StackPanel Margin="12" Spacing="12">
-              <TextBlock Opacity="0.75" TextWrapping="Wrap"
-                         Text="Raw extract by path, list a root id, or wrap/unwrap single files (ConsoleTools parity)." />
+        <GridSplitter Grid.Column="1" Width="5" ResizeDirection="Columns"
+                      Background="{StaticResource TtBorderBrush}" />
 
-              <Border Padding="12" Background="#12000000" CornerRadius="6">
-                <StackPanel Spacing="8">
-                  <TextBlock FontWeight="SemiBold" Text="Extract file" />
-                  <TextBox Name="ExtractPathBox" Watermark="chara/weapon/w1234/obj/body/b0001/model/w1234b0001.mdl" />
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <CheckBox Name="ExtractSqpackBox" Content="Keep sqpack/raw extension match" />
-                    <Button Content="Extract…" Click="OnExtractFile" />
-                  </StackPanel>
-                  <TextBlock FontWeight="SemiBold" Margin="0,8,0,0" Text="List root files" />
-                  <Grid ColumnDefinitions="*,Auto">
-                    <TextBox Grid.Column="0" Name="RootIdBox" Watermark="c0101h0010" Margin="0,0,8,0" />
-                    <Button Grid.Column="1" Content="List" Click="OnListRoot" />
-                  </Grid>
+        <Border Classes="tt-group" Grid.Column="2" Padding="0">
+          <TabControl Name="MainTabs" Padding="4">
+            <TabItem Header="Item Files">
+              <DockPanel Margin="8">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                  <Button Content="Extract Selected…" Click="OnExtractSelectedItemFile" Classes="accent" />
+                  <Button Content="Copy Path" Click="OnCopySelectedFilePath" />
+                  <TextBox Name="ExtractPathBox" Width="320" Watermark="Internal path…" />
                 </StackPanel>
-              </Border>
+                <ListBox Name="ItemFilesList" />
+              </DockPanel>
+            </TabItem>
 
-              <Border Padding="12" Background="#12000000" CornerRadius="6">
-                <StackPanel Spacing="8">
-                  <TextBlock FontWeight="SemiBold" Text="Wrap / Unwrap" />
-                  <TextBlock Opacity="0.7" TextWrapping="Wrap"
-                             Text="Wrap: PNG/DDS/FBX → FFXIV bytes. Unwrap: on-disk .tex/.mdl → PNG/FBX/DB. MDL export may need converter.exe under Wine." />
-                  <TextBox Name="FfPathBox" Watermark="Optional internal path (required for some MDLs)" />
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="Wrap file…" Click="OnWrapFile" />
-                    <Button Content="Unwrap file…" Click="OnUnwrapFile" />
-                  </StackPanel>
+            <TabItem Header="Modpacks">
+              <ScrollViewer>
+                <StackPanel Margin="12" Spacing="12">
+                  <TextBlock Foreground="{StaticResource TtMutedBrush}" TextWrapping="Wrap"
+                             Text="Penumbra-first workflows — same jobs as Mods → Import Modpack to Penumbra on classic TexTools." />
+                  <Button Content="Import Modpack to Penumbra…" Click="OnImportPenumbra" HorizontalAlignment="Left" Classes="accent" />
+                  <Button Content="Upgrade Modpack…" Click="OnUpgradeModpack" HorizontalAlignment="Left" />
+                  <Button Content="Resave / Convert…" Click="OnResaveModpack" HorizontalAlignment="Left" />
+                  <Button Content="Batch Upgrade Folder…" Click="OnBatchUpgrade" HorizontalAlignment="Left" />
                 </StackPanel>
-              </Border>
+              </ScrollViewer>
+            </TabItem>
 
-              <TextBox Name="ExtractOutputBox" IsReadOnly="True" AcceptsReturn="True"
-                       TextWrapping="Wrap" MinHeight="160" FontFamily="monospace" />
-            </StackPanel>
-          </ScrollViewer>
-        </TabItem>
+            <TabItem Header="Tools">
+              <ScrollViewer>
+                <StackPanel Margin="12" Spacing="10">
+                  <TextBlock FontWeight="SemiBold" Text="Raw File Operations" />
+                  <CheckBox Name="ExtractSqpackBox" Content="Keep sqpack/raw extension match" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Extract Path…" Click="OnExtractFile" />
+                    <TextBox Name="RootIdBox" Width="160" Watermark="c0101h0010" />
+                    <Button Content="List Root" Click="OnListRoot" />
+                  </StackPanel>
+                  <TextBlock FontWeight="SemiBold" Margin="0,8,0,0" Text="Wrap / Unwrap" />
+                  <TextBox Name="FfPathBox" Watermark="Optional internal FFXIV path (MDLs)" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Wrap File…" Click="OnWrapFile" />
+                    <Button Content="Unwrap File…" Click="OnUnwrapFile" />
+                  </StackPanel>
+                  <TextBox Name="ExtractOutputBox" IsReadOnly="True" AcceptsReturn="True"
+                           TextWrapping="Wrap" MinHeight="140" FontFamily="Consolas,monospace" />
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
 
-        <!-- Library -->
-        <TabItem Header="Library">
-          <StackPanel Margin="12" Spacing="12">
-            <TextBlock Name="LibraryInfoBox" Opacity="0.85" TextWrapping="Wrap" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button Content="Open Penumbra mods folder" Click="OnOpenPenumbra" />
-              <Button Content="Open TexTools ModPacks" Click="OnOpenModPacks" />
-              <Button Content="Open TexTools data" Click="OnOpenDataRoot" />
-            </StackPanel>
-            <Button Content="Run doctor" Click="OnRunDoctor" HorizontalAlignment="Left" />
-            <TextBox Name="LibraryOutputBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                     MinHeight="220" FontFamily="monospace" />
-          </StackPanel>
-        </TabItem>
-
-        <!-- Maintenance -->
-        <TabItem Header="Maintenance">
-          <StackPanel Margin="12" Spacing="12">
-            <TextBlock Opacity="0.75" TextWrapping="Wrap"
-                       Text="Index backups matter if you write to game DATs. Pure Penumbra users usually skip this. Restore requires DAT writing enabled and matching game version." />
-            <Border Padding="12" Background="#12000000" CornerRadius="6">
-              <StackPanel Spacing="8">
-                <TextBlock FontWeight="SemiBold" Text="Index backups" />
-                <TextBlock Name="BackupStatusBox" Opacity="0.8" TextWrapping="Wrap" />
+            <TabItem Header="Library">
+              <StackPanel Margin="12" Spacing="10">
+                <TextBlock Name="LibraryInfoBox" TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Button Content="Open backups folder" Click="OnOpenBackups" />
-                  <Button Content="Refresh backup status" Click="OnRefreshBackups" />
-                  <Button Content="Create index backups…" Click="OnCreateBackups" />
+                  <Button Content="Open Penumbra" Click="OnOpenPenumbra" />
+                  <Button Content="Open ModPacks" Click="OnOpenModPacks" />
+                  <Button Content="Open Data" Click="OnOpenDataRoot" />
+                  <Button Content="Doctor" Click="OnRunDoctor" />
                 </StackPanel>
-                <TextBlock Opacity="0.65" TextWrapping="Wrap"
-                           Text="Create copies clean indexes into Documents/TexTools/Index_Backups. If TexTools DAT mods are active this temporarily enables DAT writing to disable them. Pure Penumbra users are usually fine." />
+                <TextBox Name="LibraryOutputBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                         MinHeight="200" FontFamily="Consolas,monospace" />
               </StackPanel>
-            </Border>
-            <Border Padding="12" Background="#12000000" CornerRadius="6">
-              <StackPanel Spacing="8">
-                <TextBlock FontWeight="SemiBold" Text="Still WPF-only" />
-                <TextBlock Opacity="0.75" TextWrapping="Wrap"
-                           Text="• Interactive 3D / texture viewers (Helix)&#x0a;• Live DAT modlist / project / transaction managers&#x0a;• Visual material &amp; colorset editors&#x0a;• Item converter UI" />
-              </StackPanel>
-            </Border>
-          </StackPanel>
-        </TabItem>
+            </TabItem>
 
-        <!-- Log -->
-        <TabItem Header="Log">
-          <TextBox Name="OutputBox" Margin="8" IsReadOnly="True" AcceptsReturn="True"
-                   TextWrapping="Wrap" FontFamily="monospace" />
-        </TabItem>
-      </TabControl>
+            <TabItem Header="Help">
+              <StackPanel Margin="12" Spacing="10">
+                <TextBlock FontWeight="SemiBold" Text="Index Backups" />
+                <TextBlock Name="BackupStatusBox" TextWrapping="Wrap" Foreground="{StaticResource TtMutedBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="Create Backups…" Click="OnCreateBackups" />
+                  <Button Content="Open Folder" Click="OnOpenBackups" />
+                  <Button Content="Refresh" Click="OnRefreshBackups" />
+                </StackPanel>
+                <TextBlock Margin="0,12,0,0" FontWeight="SemiBold" Text="Not in native shell yet" />
+                <TextBlock Foreground="{StaticResource TtMutedBrush}" TextWrapping="Wrap"
+                           Text="3D model/texture viewers, visual material editors, and live DAT modlist remain Windows/WPF-only." />
+              </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Log">
+              <TextBox Name="OutputBox" Margin="4" IsReadOnly="True" AcceptsReturn="True"
+                       TextWrapping="Wrap" FontFamily="Consolas,monospace" />
+            </TabItem>
+          </TabControl>
+        </Border>
+      </Grid>
     </DockPanel>
+
+    <!-- First-run path setup (modal over chrome) -->
+    <Grid Name="SetupPanel" IsVisible="True" Background="#99000000">
+      <Border Width="560" HorizontalAlignment="Center" VerticalAlignment="Center"
+              Background="{StaticResource TtPanelBrush}" BorderBrush="{StaticResource TtAccentBrush}"
+              BorderThickness="1" Padding="0" CornerRadius="2">
+        <DockPanel>
+          <Border DockPanel.Dock="Top" Background="{StaticResource TtAccentBrush}" Padding="16,10">
+            <TextBlock Text="FFXIV TexTools" Foreground="White" FontSize="18" FontWeight="SemiBold" />
+          </Border>
+          <StackPanel Margin="20" Spacing="10">
+            <TextBlock Foreground="{StaticResource TtMutedBrush}" TextWrapping="Wrap"
+                       Text="AlphaChannel native Linux shell. Set your FFXIV install (sqpack/ffxiv), then continue." />
+            <TextBlock FontWeight="SemiBold" Text="FFXIV Directory" />
+            <Grid ColumnDefinitions="*,Auto,Auto">
+              <TextBox Grid.Column="0" Name="GamePathBox" Watermark="/path/to/game/sqpack/ffxiv" Margin="0,0,8,0" />
+              <Button Grid.Column="1" Content="Browse…" Click="OnBrowseInstall" Margin="0,0,8,0" />
+              <Button Grid.Column="2" Content="Save" Click="OnSavePath" Classes="accent" />
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Read launcher.ini" Click="OnReadLauncherIni" />
+              <Button Content="Use ~/.xlcore/ffxiv" Click="OnUseXlcore" />
+              <Button Content="Refresh" Click="OnRefresh" />
+            </StackPanel>
+            <TextBlock Name="PathStatus" TextWrapping="Wrap" Foreground="{StaticResource TtMutedBrush}" />
+            <TextBox Name="PathsBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                     MinHeight="100" FontFamily="Consolas,monospace" FontSize="11" />
+            <Button Name="ContinueButton" Content="Start TexTools" Click="OnContinue"
+                    HorizontalAlignment="Right" Classes="accent" IsEnabled="False" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+    </Grid>
   </Panel>
 </Window>
