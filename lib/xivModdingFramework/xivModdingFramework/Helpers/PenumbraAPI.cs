@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using xivModdingFramework.Cache;
 
 namespace xivModdingFramework.Helpers
 {
@@ -129,23 +130,171 @@ namespace xivModdingFramework.Helpers
             return "";
         }
 
+        /// <summary>
+        /// Resolve the Penumbra mod library directory.
+        /// Order: env → console_config override → Penumbra.json (all XLCore roots) → common folders.
+        /// Wine-style paths (Z:\home\...) are converted when possible.
+        /// </summary>
         public static string GetPenumbraDirectory()
         {
-            var path = PlatformPaths.GetPenumbraConfigPath();
-            if (!File.Exists(path))
+            foreach (var key in new[] { "PENUMBRA_MOD_DIR", "PENUMBRA_PATH", "PENUMBRA_MODS" })
             {
-                return "";
+                var env = Environment.GetEnvironmentVariable(key);
+                var native = NormalizeExistingDirectory(env);
+                if (native != null) return native;
             }
 
             try
             {
-                var obj = JObject.Parse(File.ReadAllText(path));
-                var st = (string)obj["ModDirectory"];
-                return st ?? "";
+                var cfg = ConsoleConfig.Get();
+                var overrideDir = NormalizeExistingDirectory(cfg?.PenumbraModDirectory);
+                if (overrideDir != null) return overrideDir;
             }
-            catch (Exception ex)
+            catch
             {
-                return "";
+                // ConsoleConfig may be unavailable in some hosts.
+            }
+
+            foreach (var configPath in PlatformPaths.EnumeratePenumbraConfigPaths())
+            {
+                if (!File.Exists(configPath)) continue;
+                try
+                {
+                    var obj = JObject.Parse(File.ReadAllText(configPath));
+                    var st = (string)obj["ModDirectory"];
+                    var native = NormalizeExistingDirectory(st);
+                    if (native != null) return native;
+                }
+                catch
+                {
+                    // try next
+                }
+            }
+
+            // Last-resort guesses when Penumbra.json is missing or ModDirectory is unset.
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            foreach (var guess in new[]
+                     {
+                         Path.Combine(home, "ff14-mods"),
+                         Path.Combine(home, "FFXIV Mods"),
+                         Path.Combine(home, "Documents", "Penumbra"),
+                         Path.Combine(home, ".xlcore", "penumbra"),
+                         Path.Combine(PlatformPaths.GetLauncherConfigRoot(), "penumbra"),
+                     })
+            {
+                var native = NormalizeExistingDirectory(guess);
+                if (native != null) return native;
+            }
+
+            return "";
+        }
+
+        /// <summary>
+        /// Human-readable diagnostics for why Penumbra discovery failed / succeeded.
+        /// </summary>
+        public static string DescribePenumbraDiscovery()
+        {
+            var sb = new System.Text.StringBuilder();
+            var resolved = GetPenumbraDirectory();
+            sb.AppendLine(string.IsNullOrWhiteSpace(resolved)
+                ? "Resolved Penumbra mod directory: (none)"
+                : "Resolved Penumbra mod directory: " + resolved);
+
+            try
+            {
+                var ov = ConsoleConfig.Get()?.PenumbraModDirectory;
+                sb.AppendLine("console_config PenumbraModDirectory: " +
+                              (string.IsNullOrWhiteSpace(ov) ? "(unset)" : ov));
+            }
+            catch
+            {
+                sb.AppendLine("console_config PenumbraModDirectory: (unavailable)");
+            }
+
+            sb.AppendLine("Penumbra.json candidates:");
+            foreach (var configPath in PlatformPaths.EnumeratePenumbraConfigPaths())
+            {
+                if (!File.Exists(configPath))
+                {
+                    sb.AppendLine("  missing  " + configPath);
+                    continue;
+                }
+
+                try
+                {
+                    var obj = JObject.Parse(File.ReadAllText(configPath));
+                    var st = (string)obj["ModDirectory"] ?? "";
+                    var native = NormalizeExistingDirectory(st);
+                    sb.AppendLine("  found    " + configPath);
+                    sb.AppendLine("           ModDirectory raw: " + (string.IsNullOrWhiteSpace(st) ? "(empty)" : st));
+                    sb.AppendLine("           native: " + (native ?? "(does not exist)"));
+                }
+                catch (Exception ex)
+                {
+                    sb.AppendLine("  error    " + configPath + " — " + ex.Message);
+                }
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        /// <summary>
+        /// Expand ~/…, convert Wine Z:\… paths, and return a real existing directory — or null.
+        /// </summary>
+        public static string NormalizeExistingDirectory(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            path = path.Trim().Trim('"');
+
+            foreach (var candidate in ExpandPathCandidates(path))
+            {
+                try
+                {
+                    if (Directory.Exists(candidate))
+                        return Path.GetFullPath(candidate);
+                }
+                catch
+                {
+                    // try next
+                }
+            }
+
+            return null;
+        }
+
+        private static IEnumerable<string> ExpandPathCandidates(string path)
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            if (path.StartsWith("~/") || path.StartsWith("~\\"))
+                path = Path.Combine(home, path.Substring(2));
+            else if (path == "~")
+                path = home;
+
+            yield return path;
+
+            // Wine/Proton: Z:\home\user\... → /home/user/...
+            if (path.Length >= 3
+                && char.IsLetter(path[0])
+                && path[1] == ':'
+                && (path[2] == '\\' || path[2] == '/'))
+            {
+                var drive = char.ToUpperInvariant(path[0]);
+                var rest = path.Substring(3).Replace('\\', '/').TrimStart('/');
+                if (drive == 'Z')
+                {
+                    yield return "/" + rest;
+                    if (!string.IsNullOrEmpty(home))
+                        yield return Path.Combine(home, rest); // rare mis-map
+                }
+            }
+
+            // UNC-ish Wine paths sometimes show up as \\?\Z:\...
+            if (path.StartsWith(@"\\?\Z:\", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith("//?/Z:/", StringComparison.OrdinalIgnoreCase))
+            {
+                var rest = path.Substring(7).Replace('\\', '/').TrimStart('/');
+                yield return "/" + rest;
             }
         }
 

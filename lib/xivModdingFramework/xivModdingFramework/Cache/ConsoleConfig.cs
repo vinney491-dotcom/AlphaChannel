@@ -18,6 +18,12 @@ namespace xivModdingFramework.Cache
 
         public string XivPath { get; set; } = "";
 
+        /// <summary>
+        /// Optional override for the Penumbra mod library root (Linux-friendly).
+        /// Used when Penumbra.json is missing / has an empty or Wine-only ModDirectory.
+        /// </summary>
+        public string PenumbraModDirectory { get; set; } = "";
+
         public string Language { get; set; } = "en";
 
         [JsonIgnore]

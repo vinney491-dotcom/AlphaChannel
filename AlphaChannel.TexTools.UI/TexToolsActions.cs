@@ -44,7 +44,12 @@ public static class TexToolsActions
         if (string.IsNullOrWhiteSpace(penumbraDir) || !Directory.Exists(penumbraDir))
         {
             throw new InvalidOperationException(
-                "Penumbra mod directory not found. Install Penumbra in XIVLauncher.Core / Dalamud and set its mod folder.");
+                "Penumbra mod directory not found.\n\n" +
+                "Fix one of:\n" +
+                "  • In-game: /penumbra → Settings → set Root Directory, then Save\n" +
+                "  • Here: Options → Set Penumbra Mods Folder…\n" +
+                "  • Env: PENUMBRA_MOD_DIR=/path/to/mods\n\n" +
+                PenumbraAPI.DescribePenumbraDiscovery());
         }
 
         log?.Report($"Penumbra library: {penumbraDir}");

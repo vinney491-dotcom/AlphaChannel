@@ -653,12 +653,31 @@ public partial class MainWindow : Window
         });
     }
 
+    private async void OnSetPenumbraFolder(object? sender, RoutedEventArgs e)
+    {
+        var current = PenumbraAPI.GetPenumbraDirectory();
+        var start = !string.IsNullOrWhiteSpace(current) && Directory.Exists(current)
+            ? current
+            : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var folder = await NativeFolderPicker.PickFolderAsync(this, start);
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+            return;
+
+        ConsoleConfig.Update(c => c.PenumbraModDirectory = Path.GetFullPath(folder));
+        RefreshLibraryInfo();
+        AppendLibrary($"Penumbra mod directory set to:\n{Path.GetFullPath(folder)}\n\n{PenumbraAPI.DescribePenumbraDiscovery()}");
+        BusyText.Text = $"Penumbra folder: {Path.GetFullPath(folder)}";
+        MainTabs.SelectedIndex = 3; // Library
+    }
+
     private void OnOpenPenumbra(object? sender, RoutedEventArgs e)
     {
         var dir = PenumbraAPI.GetPenumbraDirectory();
         if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
         {
-            AppendLibrary("Penumbra mod directory not found.");
+            AppendLibrary("Penumbra mod directory not found.\n\n" + PenumbraAPI.DescribePenumbraDiscovery()
+                          + "\n\nUse Options → Set Penumbra Mods Folder…");
+            MainTabs.SelectedIndex = 3;
             return;
         }
         OpenPath(dir);
@@ -703,11 +722,12 @@ public partial class MainWindow : Window
             var sb = new StringBuilder();
             sb.AppendLine($"OS: Linux / .NET {Environment.Version}");
             sb.AppendLine($"Game: {ConsoleConfig.Get().XivPath}");
-            sb.AppendLine($"Penumbra: {PenumbraAPI.GetPenumbraDirectory() ?? "(none)"}");
             sb.AppendLine($"TexTools data: {PlatformPaths.GetTexToolsDataRoot()}");
             sb.AppendLine($"ModPacks: {PlatformPaths.GetTexToolsModPacksDirectory()}");
             sb.AppendLine($"Backups: {PlatformPaths.GetTexToolsIndexBackupsDirectory()}");
             sb.AppendLine($"launcher.ini: {PlatformPaths.GetLauncherIniPath()}");
+            sb.AppendLine();
+            sb.AppendLine(PenumbraAPI.DescribePenumbraDiscovery());
             LibraryOutputBox.Text = sb.ToString();
             log.Report("Doctor summary written to Library tab.");
             await Task.CompletedTask;
@@ -718,7 +738,7 @@ public partial class MainWindow : Window
     {
         var pen = PenumbraAPI.GetPenumbraDirectory();
         LibraryInfoBox.Text =
-            $"Penumbra mod directory: {(string.IsNullOrWhiteSpace(pen) ? "(not found — install Penumbra / set ModDirectory)" : pen)}\n" +
+            $"Penumbra mod directory: {(string.IsNullOrWhiteSpace(pen) ? "(not found — Options → Set Penumbra Mods Folder…)" : pen)}\n" +
             $"TexTools ModPacks: {PlatformPaths.GetTexToolsModPacksDirectory()}\n" +
             $"Game path: {ConsoleConfig.Get().XivPath}";
     }

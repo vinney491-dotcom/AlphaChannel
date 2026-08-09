@@ -44,13 +44,29 @@ namespace xivModdingFramework.Helpers
         /// </summary>
         public static string GetLauncherConfigRoot()
         {
-            foreach (var candidate in EnumerateLauncherConfigRoots())
+            var existing = EnumerateLauncherConfigRoots()
+                .Where(Directory.Exists)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            // Prefer a root that actually has Penumbra / Dalamud config — ~/.xlcore often
+            // exists as an empty stub while the real XLCore data lives under XDG.
+            foreach (var candidate in existing)
             {
-                if (Directory.Exists(candidate))
-                {
+                if (File.Exists(Path.Combine(candidate, "pluginConfigs", "Penumbra.json")))
                     return candidate;
-                }
             }
+
+            foreach (var candidate in existing)
+            {
+                if (File.Exists(Path.Combine(candidate, "dalamudConfig.json"))
+                    || File.Exists(Path.Combine(candidate, "launcher.ini"))
+                    || File.Exists(Path.Combine(candidate, "launcherConfigV3.json")))
+                    return candidate;
+            }
+
+            if (existing.Count > 0)
+                return existing[0];
 
             // Preferred default even if missing (doctor / first-run messaging).
             if (IsLinux || IsMacOS)
@@ -119,7 +135,21 @@ namespace xivModdingFramework.Helpers
             Path.Combine(GetLauncherConfigRoot(), "dalamudConfig.json");
 
         public static string GetPenumbraConfigPath() =>
-            Path.Combine(GetLauncherConfigRoot(), "pluginConfigs", "Penumbra.json");
+            EnumeratePenumbraConfigPaths().FirstOrDefault(File.Exists)
+            ?? Path.Combine(GetLauncherConfigRoot(), "pluginConfigs", "Penumbra.json");
+
+        /// <summary>
+        /// All candidate Penumbra.json locations across XL / XLCore roots.
+        /// </summary>
+        public static IEnumerable<string> EnumeratePenumbraConfigPaths()
+        {
+            foreach (var root in EnumerateLauncherConfigRoots())
+            {
+                yield return Path.Combine(root, "pluginConfigs", "Penumbra.json");
+                // Some older / alternate layouts nest under dalamud/
+                yield return Path.Combine(root, "dalamud", "pluginConfigs", "Penumbra.json");
+            }
+        }
 
         /// <summary>
         /// Default TexTools user data root (Saved / ModPacks / Index_Backups).

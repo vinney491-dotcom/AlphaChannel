@@ -46,7 +46,9 @@
           </MenuItem>
         </MenuItem>
         <MenuItem Header="_Options">
-          <MenuItem Header="Settings…" Click="OnChangePath" />
+          <MenuItem Header="Settings / Game Path…" Click="OnChangePath" />
+          <MenuItem Header="Set Penumbra Mods Folder…" Click="OnSetPenumbraFolder" />
+          <MenuItem Header="Open Penumbra Mods Folder" Click="OnOpenPenumbra" />
           <MenuItem Header="Open TexTools Data Folder" Click="OnOpenDataRoot" />
           <Separator />
           <MenuItem Header="Theme">
@@ -167,6 +169,7 @@
               <StackPanel Margin="12" Spacing="10">
                 <TextBlock Name="LibraryInfoBox" TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="Set Penumbra Folder…" Click="OnSetPenumbraFolder" Classes="accent" />
                   <Button Content="Open Penumbra" Click="OnOpenPenumbra" />
                   <Button Content="Open ModPacks" Click="OnOpenModPacks" />
                   <Button Content="Open Data" Click="OnOpenDataRoot" />
