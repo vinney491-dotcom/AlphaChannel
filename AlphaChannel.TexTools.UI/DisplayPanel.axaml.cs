@@ -13,7 +13,7 @@ public partial class DisplayPanel : UserControl
     private string? _path;
     private bool _updatingChannels;
     public event Action<string>? StatusChanged;
-    public event Func<string, Task>? ExportRequested;
+    public Func<string, Task>? ExportRequested { get; set; }
 
     public DisplayPanel()
     {
