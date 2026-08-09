@@ -20,6 +20,9 @@ sudo pacman -S --needed dotnet-sdk-8.0 git base-devel
 cd ~/AlphaChannel-TexTools-ready   # wherever you extracted/cloned it
 
 ./scripts/native-build-and-run.sh
+
+# Clickable Desktop + app-menu icon
+./scripts/install-desktop-launcher.sh
 ```
 
 Point CLI tools at your XIVLauncher.Core install when you use mod commands:

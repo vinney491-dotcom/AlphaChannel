@@ -30,5 +30,7 @@ else
 fi
 
 chmod +x scripts/*.sh
+echo "==> Installing desktop / app-menu launcher"
+./scripts/install-desktop-launcher.sh || true
 echo "==> Building + launching native UI"
 exec ./scripts/native-build-and-run.sh
