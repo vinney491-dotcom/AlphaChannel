@@ -37,6 +37,9 @@
           <MenuItem Header="Show Log" Click="OnShowLogTab" />
         </MenuItem>
         <MenuItem Header="_Tools">
+          <MenuItem Header="Tattoo / Decal Converter…" Click="OnOpenTattooConverter" />
+          <MenuItem Header="Colorset Viewer…" Click="OnOpenColorset" />
+          <Separator />
           <MenuItem Header="Extract File…" Click="OnExtractFile" />
           <MenuItem Header="Wrap File…" Click="OnWrapFile" />
           <MenuItem Header="Unwrap File…" Click="OnUnwrapFile" />
@@ -191,36 +194,50 @@
             </Grid>
 
             <!-- Extra / library panel (toggle) -->
-            <Border DockPanel.Dock="Right" Name="ExtraPanel" IsVisible="False" Width="280"
+            <Border DockPanel.Dock="Right" Name="ExtraPanel" IsVisible="False" Width="320"
                     BorderBrush="{StaticResource TtBorderBrush}" BorderThickness="1,0,0,0"
                     Background="{StaticResource TtPanelAltBrush}" Padding="8">
-              <ScrollViewer>
-                <StackPanel Spacing="8">
-                  <TextBlock FontWeight="SemiBold" Foreground="{StaticResource TtAccentBrush}" Text="LIBRARY / TOOLS" />
-                  <TextBlock Name="LibraryInfoBox" TextWrapping="Wrap" FontSize="11"
-                             Foreground="{StaticResource TtMutedBrush}" />
-                  <Button Content="Import to Penumbra…" Click="OnImportPenumbra" Classes="accent" />
-                  <Button Content="Set Penumbra Folder…" Click="OnSetPenumbraFolder" />
-                  <Button Content="Doctor" Click="OnRunDoctor" />
-                  <Button Content="Create Index Backups…" Click="OnCreateBackups" />
-                  <TextBlock Name="BackupStatusBox" TextWrapping="Wrap" FontSize="11"
-                             Foreground="{StaticResource TtMutedBrush}" />
-                  <TextBlock FontWeight="SemiBold" Margin="0,8,0,0" Text="Log" />
-                  <TextBox Name="OutputBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                           MinHeight="160" FontFamily="Consolas,monospace" FontSize="11" />
-                  <TextBox Name="LibraryOutputBox" IsVisible="False" />
-                  <TextBox Name="ExtractOutputBox" IsVisible="False" />
-                  <TextBox Name="ExtractPathBox" IsVisible="False" />
-                  <CheckBox Name="ExtractSqpackBox" IsVisible="False" />
-                  <TextBox Name="RootIdBox" IsVisible="False" />
-                  <TextBox Name="FfPathBox" IsVisible="False" />
-                  <ListBox Name="ItemFilesList" IsVisible="False" SelectionChanged="OnItemFileSelected" />
-                  <TabControl Name="MainTabs" IsVisible="False">
-                    <TabItem Header="0" /><TabItem Header="1" /><TabItem Header="2" />
-                    <TabItem Header="3" /><TabItem Header="4" /><TabItem Header="5" />
-                  </TabControl>
-                </StackPanel>
-              </ScrollViewer>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Foreground="{StaticResource TtAccentBrush}"
+                           Text="LIBRARY / TOOLS" Margin="0,0,0,8" />
+                <TextBox DockPanel.Dock="Bottom" Name="OutputBox" IsReadOnly="True" AcceptsReturn="True"
+                         TextWrapping="Wrap" MinHeight="120" FontFamily="Consolas,monospace" FontSize="11"
+                         Margin="0,8,0,0" />
+                <TextBlock DockPanel.Dock="Bottom" FontWeight="SemiBold" Margin="0,8,0,4" Text="Log" />
+                <ScrollViewer>
+                  <StackPanel Spacing="8">
+                    <TextBlock Name="LibraryInfoBox" TextWrapping="Wrap" FontSize="11"
+                               Foreground="{StaticResource TtMutedBrush}" />
+                    <Button Content="Import to Penumbra…" Click="OnImportPenumbra" Classes="accent" />
+                    <Button Content="Set Penumbra Folder…" Click="OnSetPenumbraFolder" />
+                    <TextBlock FontWeight="SemiBold" Margin="0,4,0,0" Text="Penumbra mods" />
+                    <TextBox Name="PenumbraSearchBox" Watermark="Filter mods…" KeyUp="OnPenumbraSearchKeyUp" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Button Content="Refresh" Click="OnRefreshPenumbraLibrary" />
+                      <Button Content="Open" Click="OnOpenSelectedPenumbraMod" />
+                      <Button Content="Reload API" Click="OnReloadSelectedPenumbraMod" />
+                    </StackPanel>
+                    <ListBox Name="PenumbraModsList" MinHeight="140" MaxHeight="220" />
+                    <Button Content="Tattoo / Decal Converter…" Click="OnOpenTattooConverter" />
+                    <Button Content="Colorset Viewer…" Click="OnOpenColorset" />
+                    <Button Content="Doctor" Click="OnRunDoctor" />
+                    <Button Content="Create Index Backups…" Click="OnCreateBackups" />
+                    <TextBlock Name="BackupStatusBox" TextWrapping="Wrap" FontSize="11"
+                               Foreground="{StaticResource TtMutedBrush}" />
+                    <TextBox Name="LibraryOutputBox" IsVisible="False" />
+                    <TextBox Name="ExtractOutputBox" IsVisible="False" />
+                    <TextBox Name="ExtractPathBox" IsVisible="False" />
+                    <CheckBox Name="ExtractSqpackBox" IsVisible="False" />
+                    <TextBox Name="RootIdBox" IsVisible="False" />
+                    <TextBox Name="FfPathBox" IsVisible="False" />
+                    <ListBox Name="ItemFilesList" IsVisible="False" SelectionChanged="OnItemFileSelected" />
+                    <TabControl Name="MainTabs" IsVisible="False">
+                      <TabItem Header="0" /><TabItem Header="1" /><TabItem Header="2" />
+                      <TabItem Header="3" /><TabItem Header="4" /><TabItem Header="5" />
+                    </TabControl>
+                  </StackPanel>
+                </ScrollViewer>
+              </DockPanel>
             </Border>
 
             <!-- Viewport / display -->

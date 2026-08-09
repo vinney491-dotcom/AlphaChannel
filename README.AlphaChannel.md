@@ -21,3 +21,16 @@ Related prior art: [FFMT](https://ffmt.onrender.com/) (cross-platform CLI, also 
 3. **Native converters** — replace or wrap `texconv.exe`, `converter.exe`, AssetCc helpers.
 4. **UI** — Avalonia (or similar) shell; do not expect MahApps/Helix WPF to port cleanly.
 5. **Keep Windows working** — runtime OS checks; do not break the Windows workflow while Linux lands.
+
+## Avalonia product stance (Penumbra-first)
+
+Ship what works without Helix/DAT/dance:
+
+- Penumbra import, library browse/reload, path discovery
+- Tattoo/decal → uncompressed `.tex` Penumbra folders
+- Simple colorset viewer (row colors + PNG export)
+- Desktop launcher for discoverability
+
+Explicit **non-goals**: Helix 3D, DAT writes while the game is running, dance creation,
+universal one-click body/Lalafell upscale (R&D only — `docs/BODY_UPSCALE_SPIKE.md`),
+and merging this GPL tree into the AlphaChannel plugin.
