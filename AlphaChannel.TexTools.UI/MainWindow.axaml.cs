@@ -45,10 +45,14 @@ public partial class MainWindow : Window
             start = Directory.GetParent(start)?.FullName ?? start;
         }
 
-        var browser = new FolderBrowserWindow(start);
-        var result = await browser.ShowDialog<string?>(this);
+        // Linux: open Dolphin/KDE (kdialog) or zenity — not a Wine/Windows sandbox dialog.
+        PathStatus.Text = "Opening system folder picker (Dolphin/KDE if available)…";
+        var result = await NativeFolderPicker.PickFolderAsync(this, start);
         if (string.IsNullOrWhiteSpace(result))
+        {
+            PathStatus.Text = "Browse cancelled.";
             return;
+        }
 
         var normalized = NormalizeToSqPack(result);
         GamePathBox.Text = normalized;

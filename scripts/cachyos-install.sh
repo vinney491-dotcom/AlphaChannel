@@ -8,7 +8,9 @@ EXPORT_BRANCH="cursor/textools-export-02c5"
 STANDALONE_URL="https://github.com/vinney491-dotcom/AlphaChannel-TexTools.git"
 
 echo "==> Installing packages"
-sudo pacman -S --needed --noconfirm dotnet-sdk-8.0 git base-devel
+# kdialog = Dolphin/KDE native folder picker (used by Browse + Wine launcher)
+sudo pacman -S --needed --noconfirm dotnet-sdk-8.0 git base-devel kdialog || \
+  sudo pacman -S --needed --noconfirm dotnet-sdk-8.0 git base-devel
 
 if [[ -f "$DEST/AlphaChannel.TexTools.Native.sln" ]]; then
   echo "==> Using existing tree at $DEST"

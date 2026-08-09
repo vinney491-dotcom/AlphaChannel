@@ -82,7 +82,10 @@ If you need the complete WPF TexTools UI today:
 ```bash
 sudo apt install wine winetricks unzip curl cabextract
 ./scripts/linux-install-release.sh
+# Opens Dolphin/KDE (kdialog) to pick the game folder — not Wine's Windows dialog.
+# Needs: sudo pacman -S --needed kdialog
 ./scripts/linux-run-wine.sh   # installs corefonts + .NET 4.8 on first run
+# TEXTOOLS_PICK_MODE=pick|ask|auto  (default ask)
 ```
 
 ## Layout
