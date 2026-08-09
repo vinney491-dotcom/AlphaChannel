@@ -657,35 +657,37 @@ namespace xivModdingFramework.Helpers
             }
 
             Directory.CreateDirectory(destination);
+            var destFull = Path.GetFullPath(destination);
 
             // Extract each zip file independently in parallel.
+            // IMPORTANT: Do NOT use ZipEntry.Extract(directory) on Linux — DotNetZip builds
+            // paths with backslashes and then calls Directory.CreateDirectory("") for root
+            // entries (ArgumentException: path cannot be empty). Stream extract instead.
             var tasks = new List<Task>();
             foreach (var file in filesToUnzip)
             {
                 var taskFile = file;
-                tasks.Add(Task.Run(async () =>
+                tasks.Add(Task.Run(() =>
                 {
                     using (var zip = new Ionic.Zip.ZipFile(zipLocation))
                     {
                         var toUnzip = zip.Entries.Where(x => ReplaceSlashes(x.FileName).ToLower() == taskFile);
                         foreach (var e in toUnzip)
                         {
-                            var pathSafe = IOUtil.MakePathSafe(Path.GetFileName(e.FileName), false);
-                            var def = Path.GetFileName(e.FileName);
-                            var illegal = def != pathSafe;
-                            if (illegal)
+                            if (e.IsDirectory) continue;
+
+                            try
                             {
-                                try
-                                {
-                                    e.Extract(destination, Ionic.Zip.ExtractExistingFileAction.OverwriteSilently);
-                                }
-                                catch(Exception ex)
-                                {
-                                    Trace.WriteLine(ex);
-                                }
-                            } else
+                                ExtractZipEntryToDirectory(e, destFull);
+                            }
+                            catch (Exception ex)
                             {
-                                e.Extract(destination, Ionic.Zip.ExtractExistingFileAction.OverwriteSilently);
+                                Trace.WriteLine(ex);
+                                // Keep prior behavior for "illegal" names: skip bad entries.
+                                var pathSafe = IOUtil.MakePathSafe(Path.GetFileName(e.FileName), false);
+                                var def = Path.GetFileName(e.FileName);
+                                if (def == pathSafe)
+                                    throw;
                             }
                         }
                     }
@@ -693,6 +695,49 @@ namespace xivModdingFramework.Helpers
             }
 
             await Task.WhenAll(tasks);
+        }
+
+        /// <summary>
+        /// Extract a DotNetZip entry to <paramref name="destinationDir"/> using streams and
+        /// platform-correct separators (safe on Linux/macOS).
+        /// </summary>
+        private static void ExtractZipEntryToDirectory(Ionic.Zip.ZipEntry entry, string destinationDir)
+        {
+            // Normalize zip-internal separators, then strip drive / rooted prefixes.
+            var relative = (entry.FileName ?? "")
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .Replace('/', Path.DirectorySeparatorChar)
+                .TrimStart(Path.DirectorySeparatorChar);
+
+            if (string.IsNullOrWhiteSpace(relative))
+                return;
+
+            // Reject path traversal.
+            var parts = relative.Split(Path.DirectorySeparatorChar)
+                .Where(p => p != "." && p != "..")
+                .Select(p => MakePathSafe(p, false))
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .ToArray();
+            if (parts.Length == 0)
+                return;
+
+            var outPath = Path.GetFullPath(Path.Combine(destinationDir, Path.Combine(parts)));
+            var destPrefix = destinationDir.TrimEnd(Path.DirectorySeparatorChar)
+                             + Path.DirectorySeparatorChar;
+            if (!outPath.StartsWith(destPrefix, StringComparison.Ordinal)
+                && !string.Equals(outPath, destinationDir.TrimEnd(Path.DirectorySeparatorChar), StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Zip entry escapes destination: " + entry.FileName);
+            }
+
+            var parent = Path.GetDirectoryName(outPath);
+            if (!string.IsNullOrEmpty(parent))
+                Directory.CreateDirectory(parent);
+
+            using (var fs = File.Open(outPath, FileMode.Create, FileAccess.Write, FileShare.Read))
+            {
+                entry.Extract(fs);
+            }
         }
 
         /// <summary>
