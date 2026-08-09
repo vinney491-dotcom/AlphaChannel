@@ -78,8 +78,8 @@ public partial class DisplayPanel : UserControl
         _current = null;
         _path = null;
         TitleText.Text = "Display";
-        InfoText.Text = "Select a file to preview.";
-        PlaceholderText.Text = "No preview";
+        InfoText.Text = "Select an item to preview.";
+        PlaceholderText.Text = "No Item Selected";
         PlaceholderText.IsVisible = true;
         PreviewImage.Source = null;
         PreviewImage.IsVisible = false;

@@ -20,7 +20,17 @@ namespace AlphaChannel.TexTools.UI;
 public partial class MainWindow : Window
 {
     private bool _busy;
+    private bool _updatingCombos;
     private List<ItemRow> _allItems = new();
+    private ItemRow? _currentItem;
+    private string? _currentFilePath;
+
+    private sealed class FileChoice
+    {
+        public FileChoice(string path) => Path = path;
+        public string Path { get; }
+        public override string ToString() => System.IO.Path.GetFileName(Path);
+    }
 
     public MainWindow()
     {
@@ -29,6 +39,7 @@ public partial class MainWindow : Window
         MainDisplay.ExportRequested = async path =>
         {
             ExtractPathBox.Text = path;
+            FilePathBox.Text = path;
             OnExtractFile(null, new RoutedEventArgs());
             await Task.CompletedTask;
         };
@@ -182,12 +193,6 @@ public partial class MainWindow : Window
             {
                 BusyText.Text = "Start TexTools (set game path) before previewing textures — still showing image.";
             }
-            else
-            {
-                MainTabs.SelectedIndex = 0;
-            }
-
-            // Show workspace display even during setup by revealing chrome temporarily for preview
             if (SetupPanel.IsVisible)
             {
                 // Keep setup; open pop-out viewer for the external file
@@ -210,7 +215,7 @@ public partial class MainWindow : Window
         await RunBusyAsync("Initializing…", async log =>
         {
             await GameSession.EnsureInitializedAsync(log);
-            log.Report("Ready. Use Modpacks → Import to Penumbra for the classic TexTools→Penumbra flow.");
+            log.Report("Ready. View → Load Item List, then pick an item. Mods → Import to Penumbra for modpacks.");
         });
     }
 
@@ -242,7 +247,12 @@ public partial class MainWindow : Window
 
     private void OnShowLogTab(object? sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 5;
+        ExtraPanel.IsVisible = true;
+    }
+
+    private void OnShowExtraPanel(object? sender, RoutedEventArgs e)
+    {
+        ExtraPanel.IsVisible = !ExtraPanel.IsVisible;
     }
 
     private void OnThemeLight(object? sender, RoutedEventArgs e)
@@ -262,11 +272,11 @@ public partial class MainWindow : Window
         await MessageBox.ShowAsync(
             this,
             "FFXIV TexTools (AlphaChannel Linux)\n\n" +
-            "Classic TexTools-style shell on Avalonia.\n" +
-            "Display: texture preview (R/G/B/A), model & material info, pop-out Item Viewer.\n" +
-            "Core workflows: Penumbra import, modpack upgrade, extract, item browser.\n\n" +
-            "Upstream: TexTools / xivModdingFramework (GPL-3.0).\n" +
-            "Interactive Helix 3D viewport remains Windows/WPF-only.",
+            "Classic dark TexTools shell on Avalonia (Linux).\n" +
+            "Item List + Model/Material/Texture selectors + display viewport.\n" +
+            "Texture preview works; interactive Helix 3D remains Windows/WPF-only.\n" +
+            "SAVE TO FFXIV → Penumbra import on Linux.\n\n" +
+            "Upstream: TexTools / xivModdingFramework (GPL-3.0).",
             "About FFXIV TexTools");
     }
 
@@ -459,7 +469,7 @@ public partial class MainWindow : Window
         {
             _allItems = (await TexToolsActions.LoadItemBrowserAsync(log)).ToList();
             ApplyItemFilter();
-            ItemsStatusBox.Text = $"{_allItems.Count} items loaded.";
+            ItemsStatusBox.Text = $"{_allItems.Count} items · Cache Worker Paused";
         });
     }
 
@@ -472,59 +482,238 @@ public partial class MainWindow : Window
         if (!string.IsNullOrEmpty(q))
         {
             view = _allItems.Where(i =>
-                i.Display.Contains(q, StringComparison.OrdinalIgnoreCase));
+                i.Display.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || i.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
         }
-        ItemsList.ItemsSource = view.Take(2000).ToList();
-        if (_allItems.Count > 2000 && string.IsNullOrEmpty(q))
-            ItemsStatusBox.Text = $"Showing first 2000 of {_allItems.Count} — use search to narrow.";
+
+        var list = view.Take(5000).ToList();
+        ItemsList.ItemsSource = list;
+        CategoryTree.ItemsSource = BuildCategoryTree(list);
+        if (_allItems.Count > 5000 && string.IsNullOrEmpty(q))
+            ItemsStatusBox.Text = $"Showing first 5000 of {_allItems.Count} — use search to narrow.";
+        else if (!string.IsNullOrEmpty(q))
+            ItemsStatusBox.Text = $"{list.Count} match · Cache Worker Paused";
+    }
+
+    private static List<ItemTreeNode> BuildCategoryTree(IEnumerable<ItemRow> items)
+    {
+        var roots = new List<ItemTreeNode>();
+        foreach (var primaryGroup in items.GroupBy(i => string.IsNullOrWhiteSpace(i.PrimaryCategory) ? "Other" : i.PrimaryCategory)
+                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var primaryNode = new ItemTreeNode(primaryGroup.Key);
+            foreach (var secondaryGroup in primaryGroup.GroupBy(i => string.IsNullOrWhiteSpace(i.SecondaryCategory) ? "General" : i.SecondaryCategory)
+                         .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                var secondaryNode = new ItemTreeNode(secondaryGroup.Key);
+                foreach (var item in secondaryGroup.OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase).Take(500))
+                    secondaryNode.Children.Add(new ItemTreeNode(item.Name, item));
+                primaryNode.Children.Add(secondaryNode);
+            }
+            roots.Add(primaryNode);
+        }
+        return roots;
+    }
+
+    private async void OnCategoryTreeSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        if (CategoryTree.SelectedItem is ItemTreeNode { Item: { } row })
+            await SelectItemAsync(row);
     }
 
     private async void OnItemSelected(object? sender, SelectionChangedEventArgs e)
     {
-        if (ItemsList.SelectedItem is not ItemRow row) return;
+        if (ItemsList.SelectedItem is ItemRow row)
+            await SelectItemAsync(row);
+    }
+
+    private async Task SelectItemAsync(ItemRow row)
+    {
+        _currentItem = row;
+        ItemNameBox.Text = row.Name;
         await RunBusyAsync("Listing item files…", async log =>
         {
             var files = await TexToolsActions.ListItemFilesAsync(row.Item, log);
             ItemFilesList.ItemsSource = files;
-            ItemsStatusBox.Text = $"{row.Display} — {files.Count} files";
+            ItemsStatusBox.Text = $"{row.Name} — {files.Count} files · Cache Worker Paused";
+            PopulateFileCombos(files);
             var prefer = DisplayPreview.PreferDisplayFile(files);
             if (!string.IsNullOrWhiteSpace(prefer))
+                await ShowFileInViewAsync(prefer);
+            else
             {
-                ExtractPathBox.Text = prefer;
-                ItemFilesList.SelectedItem = prefer;
-            }
-            else if (files.Count > 0)
-            {
-                ExtractPathBox.Text = files[0];
+                FilePathBox.Text = "No previewable files";
+                await MainDisplay.ShowPathAsync(null);
             }
         });
+    }
+
+    private void PopulateFileCombos(IReadOnlyList<string> files)
+    {
+        _updatingCombos = true;
+        try
+        {
+            ModelCombo.ItemsSource = files.Where(f => f.EndsWith(".mdl", StringComparison.OrdinalIgnoreCase))
+                .Select(f => new FileChoice(f)).ToList();
+            MaterialCombo.ItemsSource = files.Where(f => f.EndsWith(".mtrl", StringComparison.OrdinalIgnoreCase))
+                .Select(f => new FileChoice(f)).ToList();
+            TextureCombo.ItemsSource = files.Where(f =>
+                    f.EndsWith(".tex", StringComparison.OrdinalIgnoreCase)
+                    || f.EndsWith(".atex", StringComparison.OrdinalIgnoreCase))
+                .Select(f => new FileChoice(f)).ToList();
+
+            if (ModelCombo.Items.Count > 0) ModelCombo.SelectedIndex = 0;
+            if (MaterialCombo.Items.Count > 0) MaterialCombo.SelectedIndex = 0;
+            if (TextureCombo.Items.Count > 0) TextureCombo.SelectedIndex = 0;
+        }
+        finally
+        {
+            _updatingCombos = false;
+        }
+    }
+
+    private async Task ShowFileInViewAsync(string path)
+    {
+        _currentFilePath = path;
+        ExtractPathBox.Text = path;
+        FilePathBox.Text = path;
+        ItemFilesList.SelectedItem = path;
+        await MainDisplay.ShowPathAsync(path, new Progress<string>(msg => BusyText.Text = msg));
     }
 
     private async void OnItemFileSelected(object? sender, SelectionChangedEventArgs e)
     {
         if (ItemFilesList.SelectedItem is not string path) return;
-        ExtractPathBox.Text = path;
-        MainTabs.SelectedIndex = 0;
-        await MainDisplay.ShowPathAsync(path, new Progress<string>(msg => BusyText.Text = msg));
+        if (string.Equals(path, _currentFilePath, StringComparison.Ordinal)) return;
+        await ShowFileInViewAsync(path);
+    }
+
+    private async void OnModelComboChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingCombos || ModelCombo.SelectedItem is not FileChoice choice) return;
+        await ShowFileInViewAsync(choice.Path);
+    }
+
+    private async void OnMaterialComboChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingCombos || MaterialCombo.SelectedItem is not FileChoice choice) return;
+        await ShowFileInViewAsync(choice.Path);
+    }
+
+    private async void OnTextureComboChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingCombos || TextureCombo.SelectedItem is not FileChoice choice) return;
+        await ShowFileInViewAsync(choice.Path);
+    }
+
+    private async void OnShowModel(object? sender, RoutedEventArgs e)
+    {
+        if (ModelCombo.SelectedItem is FileChoice c)
+            await ShowFileInViewAsync(c.Path);
+        else
+            BusyText.Text = "No model for this item.";
+    }
+
+    private async void OnShowMaterial(object? sender, RoutedEventArgs e)
+    {
+        if (MaterialCombo.SelectedItem is FileChoice c)
+            await ShowFileInViewAsync(c.Path);
+        else
+            BusyText.Text = "No material for this item.";
+    }
+
+    private async void OnShowTexture(object? sender, RoutedEventArgs e)
+    {
+        if (TextureCombo.SelectedItem is FileChoice c)
+            await ShowFileInViewAsync(c.Path);
+        else
+            BusyText.Text = "No texture for this item.";
+    }
+
+    private async void OnRefreshItemView(object? sender, RoutedEventArgs e)
+    {
+        if (_currentItem != null)
+            await SelectItemAsync(_currentItem);
+        else
+            BusyText.Text = "No item selected.";
     }
 
     private void OnOpenDisplayWindow(object? sender, RoutedEventArgs e)
     {
-        var path = ItemFilesList.SelectedItem as string ?? ExtractPathBox.Text?.Trim();
+        var path = _currentFilePath ?? ExtractPathBox.Text?.Trim();
         if (string.IsNullOrWhiteSpace(path))
         {
             BusyText.Text = "Select an item file first.";
             return;
         }
-        var win = new DisplayWindow(path);
-        win.Show(this);
+
+        if (Path.IsPathRooted(path) && File.Exists(path))
+        {
+            var win = new DisplayWindow();
+            win.Show(this);
+            _ = win.ShowExternalPathAsync(path);
+            return;
+        }
+
+        var viewer = new DisplayWindow(path);
+        viewer.Show(this);
+    }
+
+    private async void OnSaveAsCurrent(object? sender, RoutedEventArgs e)
+    {
+        var path = _currentFilePath ?? ExtractPathBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            BusyText.Text = "Nothing to save — select a model/material/texture.";
+            return;
+        }
+
+        ExtractPathBox.Text = path;
+        OnExtractFile(sender, e);
+        await Task.CompletedTask;
+    }
+
+    private async void OnLoadExternalToDisplay(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Load external file into display",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Textures / Images")
+                {
+                    Patterns = ["*.tex", "*.atex", "*.dds", "*.png", "*.bmp", "*.tga", "*.jpg", "*.jpeg"]
+                },
+                new FilePickerFileType("All") { Patterns = ["*"] },
+            ],
+        });
+        if (files.Count == 0) return;
+        var path = files[0].TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(path)) return;
+        FilePathBox.Text = path;
+        _currentFilePath = path;
+        await MainDisplay.ShowExternalAsync(path, new Progress<string>(msg => BusyText.Text = msg));
+    }
+
+    private async void OnSaveToFfxiv(object? sender, RoutedEventArgs e)
+    {
+        await MessageBox.ShowAsync(
+            this,
+            "On Linux, TexTools does not write DATs directly.\n\n" +
+            "• Modpacks: Mods → Import Modpack to Penumbra\n" +
+            "• Single files: use SAVE AS to extract\n\n" +
+            "Opening Import to Penumbra…",
+            "SAVE TO FFXIV");
+        OnImportPenumbra(sender, e);
     }
 
     private async void OnExtractSelectedItemFile(object? sender, RoutedEventArgs e)
     {
-        if (ItemFilesList.SelectedItem is not string path)
+        var path = _currentFilePath ?? ItemFilesList.SelectedItem as string;
+        if (string.IsNullOrWhiteSpace(path))
         {
-            ItemsStatusBox.Text = "Select a file in the right list first.";
+            ItemsStatusBox.Text = "Select a file first.";
             return;
         }
         ExtractPathBox.Text = path;
@@ -534,7 +723,8 @@ public partial class MainWindow : Window
 
     private async void OnCopySelectedFilePath(object? sender, RoutedEventArgs e)
     {
-        if (ItemFilesList.SelectedItem is not string path) return;
+        var path = _currentFilePath ?? ItemFilesList.SelectedItem as string;
+        if (string.IsNullOrWhiteSpace(path)) return;
         ExtractPathBox.Text = path;
         try
         {
@@ -667,7 +857,7 @@ public partial class MainWindow : Window
         RefreshLibraryInfo();
         AppendLibrary($"Penumbra mod directory set to:\n{Path.GetFullPath(folder)}\n\n{PenumbraAPI.DescribePenumbraDiscovery()}");
         BusyText.Text = $"Penumbra folder: {Path.GetFullPath(folder)}";
-        MainTabs.SelectedIndex = 3; // Library
+        ExtraPanel.IsVisible = true;
     }
 
     private void OnOpenPenumbra(object? sender, RoutedEventArgs e)
@@ -677,7 +867,7 @@ public partial class MainWindow : Window
         {
             AppendLibrary("Penumbra mod directory not found.\n\n" + PenumbraAPI.DescribePenumbraDiscovery()
                           + "\n\nUse Options → Set Penumbra Mods Folder…");
-            MainTabs.SelectedIndex = 3;
+            ExtraPanel.IsVisible = true;
             return;
         }
         OpenPath(dir);
@@ -729,7 +919,9 @@ public partial class MainWindow : Window
             sb.AppendLine();
             sb.AppendLine(PenumbraAPI.DescribePenumbraDiscovery());
             LibraryOutputBox.Text = sb.ToString();
-            log.Report("Doctor summary written to Library tab.");
+            AppendLibrary(sb.ToString());
+            ExtraPanel.IsVisible = true;
+            log.Report("Doctor summary written to side panel Log.");
             await Task.CompletedTask;
         });
     }
@@ -797,8 +989,8 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppendLog("ERROR: " + ex);
-            BusyText.Text = "Error — see Log tab.";
-            MainTabs.SelectedIndex = MainTabs.ItemCount - 1;
+            BusyText.Text = "Error — open = panel for Log.";
+            ExtraPanel.IsVisible = true;
         }
         finally
         {

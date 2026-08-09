@@ -1,20 +1,28 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="AlphaChannel.TexTools.UI.App"
-             RequestedThemeVariant="Light">
+             RequestedThemeVariant="Dark">
   <Application.Resources>
+    <!-- Classic TexTools / MahApps dark chrome -->
     <SolidColorBrush x:Key="TtAccentBrush" Color="#119EDA" />
     <SolidColorBrush x:Key="TtAccentDarkBrush" Color="#0B7FB3" />
-    <SolidColorBrush x:Key="TtChromeBrush" Color="#F0F0F0" />
-    <SolidColorBrush x:Key="TtPanelBrush" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="TtBorderBrush" Color="#CCD3D9" />
-    <SolidColorBrush x:Key="TtMutedBrush" Color="#5A6570" />
-    <SolidColorBrush x:Key="TtTextBrush" Color="#1A1F24" />
-    <SolidColorBrush x:Key="TtStatusBrush" Color="#E8EEF2" />
-    <SolidColorBrush x:Key="TtMenuBrush" Color="#FAFBFC" />
+    <SolidColorBrush x:Key="TtChromeBrush" Color="#2B2B2B" />
+    <SolidColorBrush x:Key="TtPanelBrush" Color="#333333" />
+    <SolidColorBrush x:Key="TtPanelAltBrush" Color="#3A3A3A" />
+    <SolidColorBrush x:Key="TtBorderBrush" Color="#555555" />
+    <SolidColorBrush x:Key="TtMutedBrush" Color="#A0A0A0" />
+    <SolidColorBrush x:Key="TtTextBrush" Color="#F0F0F0" />
+    <SolidColorBrush x:Key="TtStatusBrush" Color="#252525" />
+    <SolidColorBrush x:Key="TtMenuBrush" Color="#2B2B2B" />
+    <SolidColorBrush x:Key="TtViewportBrush" Color="#1E1E1E" />
+    <SolidColorBrush x:Key="TtSafeBrush" Color="#2E7D32" />
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <Style Selector="Window">
+      <Setter Property="Background" Value="{StaticResource TtChromeBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TtTextBrush}" />
+    </Style>
     <Style Selector="Border.tt-group">
       <Setter Property="Background" Value="{StaticResource TtPanelBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource TtBorderBrush}" />
@@ -22,6 +30,14 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="CornerRadius" Value="0" />
       <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Background" Value="{StaticResource TtPanelAltBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TtTextBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource TtBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="10,6" />
     </Style>
     <Style Selector="Button.accent">
       <Setter Property="Background" Value="{StaticResource TtAccentBrush}" />
@@ -31,8 +47,36 @@
     <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="{StaticResource TtAccentDarkBrush}" />
     </Style>
+    <Style Selector="Button.tt-action">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Margin" Value="4" />
+    </Style>
     <Style Selector="Menu">
       <Setter Property="Background" Value="{StaticResource TtMenuBrush}" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#FF252525" />
+      <Setter Property="Foreground" Value="{StaticResource TtTextBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource TtBorderBrush}" />
+      <Setter Property="CaretBrush" Value="{StaticResource TtTextBrush}" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="Background" Value="#FF252525" />
+      <Setter Property="Foreground" Value="{StaticResource TtTextBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource TtBorderBrush}" />
+    </Style>
+    <Style Selector="TreeView">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource TtTextBrush}" />
+    </Style>
+    <Style Selector="ListBox">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource TtTextBrush}" />
+    </Style>
+    <Style Selector="TabControl">
+      <Setter Property="Background" Value="Transparent" />
     </Style>
   </Application.Styles>
 </Application>
