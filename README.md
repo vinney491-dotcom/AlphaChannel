@@ -10,14 +10,26 @@ Linux-native (and cross-platform) fork of [FFXIV TexTools](https://github.com/Te
 
 Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
+### What works in the Avalonia shell (Penumbra-first)
+
+| Feature | Status |
+|---------|--------|
+| Game path / XLCore doctor | Done |
+| Import modpack → Penumbra library (DT upgrade + folder) | Done |
+| Upgrade / resave / batch-upgrade modpacks | Done |
+| Extract by internal path, list root files | Done |
+| Open Penumbra / ModPacks folders | Done |
+| Index backup status / folder | Done (create/restore still DAT-write / classic) |
+| 3D viewers, material editors, live DAT modlist | Not yet (WPF/Helix) |
+
 ### CachyOS / Arch
 
 ```bash
-sudo pacman -S --needed dotnet-sdk-8.0 git base-devel
+sudo pacman -S --needed dotnet-sdk-8.0 git base-devel kdialog
 
-# until the GitHub repo exists, use the source tarball from the agent,
-# or copy /home/ubuntu/AlphaChannel-TexTools-ready from the cloud workspace
-cd ~/AlphaChannel-TexTools-ready   # wherever you extracted/cloned it
+cd ~/AlphaChannel-TexTools   # export branch or clone
+git fetch origin cursor/textools-export-02c5
+git reset --hard origin/cursor/textools-export-02c5
 
 ./scripts/native-build-and-run.sh
 

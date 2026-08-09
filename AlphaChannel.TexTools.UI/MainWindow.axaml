@@ -2,75 +2,173 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="AlphaChannel.TexTools.UI.MainWindow"
         Title="AlphaChannel TexTools"
-        Width="820" Height="580"
-        MinWidth="640" MinHeight="440">
-  <Panel Margin="24">
-    <!-- Setup / path page -->
-    <Grid Name="SetupPanel" RowDefinitions="Auto,Auto,Auto,*,Auto" IsVisible="True">
+        Width="980" Height="680"
+        MinWidth="720" MinHeight="520">
+  <Panel>
+    <!-- Setup -->
+    <Grid Name="SetupPanel" Margin="24" RowDefinitions="Auto,Auto,Auto,*,Auto" IsVisible="True">
       <TextBlock Grid.Row="0" FontSize="28" FontWeight="SemiBold" Text="AlphaChannel TexTools" />
       <TextBlock Grid.Row="1" Margin="0,8,0,16" Opacity="0.75" TextWrapping="Wrap"
-                 Text="Set your FFXIV install, then continue to the workspace. Browse uses Dolphin/KDE on Linux." />
-
+                 Text="Set your FFXIV install, then continue. This is the native Linux shell — Penumbra-first modpack tools, extract, and maintenance." />
       <Border Grid.Row="2" Padding="12" Margin="0,0,0,12" Background="#18000000" CornerRadius="6">
         <StackPanel Spacing="8">
-          <TextBlock FontWeight="SemiBold" Text="Find my FFXIV install" />
-          <TextBlock Opacity="0.75" TextWrapping="Wrap"
-                     Text="Pick the game root (folder that contains game/) or the sqpack/ffxiv folder." />
+          <TextBlock FontWeight="SemiBold" Text="FFXIV install" />
           <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBox Grid.Column="0" Name="GamePathBox" Watermark="/path/to/game/sqpack/ffxiv" Margin="0,0,8,0" />
             <Button Grid.Column="1" Content="Browse…" Click="OnBrowseInstall" Margin="0,0,8,0" />
             <Button Grid.Column="2" Content="Save" Click="OnSavePath" />
           </Grid>
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Use ~/.xlcore/ffxiv" Click="OnUseXlcore" />
             <Button Content="Read launcher.ini" Click="OnReadLauncherIni" />
+            <Button Content="Use ~/.xlcore/ffxiv" Click="OnUseXlcore" />
           </StackPanel>
           <TextBlock Name="PathStatus" Opacity="0.8" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
-
-      <StackPanel Grid.Row="3" Spacing="10">
-        <TextBlock FontWeight="SemiBold" Text="Detected paths" />
-        <TextBox Name="PathsBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                 MinHeight="120" FontFamily="monospace" />
-      </StackPanel>
-
+      <TextBox Grid.Row="3" Name="PathsBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+               MinHeight="120" FontFamily="monospace" />
       <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,16,0,0">
         <Button Content="Refresh" Click="OnRefresh" />
         <Button Name="ContinueButton" Content="Continue →" Click="OnContinue" IsEnabled="False" />
       </StackPanel>
     </Grid>
 
-    <!-- Workspace (after valid path) -->
-    <Grid Name="WorkspacePanel" RowDefinitions="Auto,Auto,Auto,*,Auto" IsVisible="False">
-      <TextBlock Grid.Row="0" FontSize="28" FontWeight="SemiBold" Text="Workspace" />
-      <TextBlock Grid.Row="1" Name="WorkspacePathLabel" Margin="0,8,0,16" Opacity="0.75" TextWrapping="Wrap" />
-
-      <Border Grid.Row="2" Padding="12" Margin="0,0,0,12" Background="#18000000" CornerRadius="6">
-        <StackPanel Spacing="10">
-          <TextBlock FontWeight="SemiBold" Text="Modpack tools" />
-          <TextBlock Opacity="0.75" TextWrapping="Wrap"
-                     Text="Full classic TexTools UI is still Windows/Wine-only. Use these native actions for now." />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Upgrade modpack…" Click="OnUpgradeModpack" />
-            <Button Content="Open ModPacks folder" Click="OnOpenModPacks" />
-            <Button Content="Open TexTools data" Click="OnOpenDataRoot" />
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Run doctor" Click="OnRunDoctor" />
-            <Button Content="Change game path…" Click="OnChangePath" />
-          </StackPanel>
+    <!-- Main shell -->
+    <DockPanel Name="WorkspacePanel" Margin="16" IsVisible="False">
+      <Grid DockPanel.Dock="Top" Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock FontSize="22" FontWeight="SemiBold" Text="AlphaChannel TexTools" />
+          <TextBlock Name="WorkspacePathLabel" Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Content="Change path…" Click="OnChangePath" />
+        </StackPanel>
+      </Grid>
+
+      <Border DockPanel.Dock="Bottom" Margin="0,12,0,0" Padding="8" Background="#14000000" CornerRadius="4">
+        <TextBlock Name="BusyText" Opacity="0.85" TextWrapping="Wrap" Text="Ready." />
       </Border>
 
-      <StackPanel Grid.Row="3" Spacing="8">
-        <TextBlock FontWeight="SemiBold" Text="Output" />
-        <TextBox Name="OutputBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                 MinHeight="180" FontFamily="monospace" />
-      </StackPanel>
+      <TabControl Name="MainTabs">
+        <!-- Modpacks -->
+        <TabItem Header="Modpacks">
+          <ScrollViewer>
+            <StackPanel Margin="12" Spacing="14">
+              <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                         Text="Same core workflows as classic TexTools Mods menu for Penumbra users: upgrade, import into the Penumbra library, resave/convert formats." />
 
-      <TextBlock Grid.Row="4" Margin="0,12,0,0" Opacity="0.65" TextWrapping="Wrap"
-                 Text="CLI: ./ConsoleTools/bin/Release/net8.0/ConsoleTools /upgrade ./mod.ttmp2 ./mod-upgraded.ttmp2" />
-    </Grid>
+              <Border Padding="12" Background="#12000000" CornerRadius="6">
+                <StackPanel Spacing="8">
+                  <TextBlock FontWeight="SemiBold" Text="Import to Penumbra" />
+                  <TextBlock Opacity="0.7" TextWrapping="Wrap"
+                             Text="Upgrade for Dawntrail and write a unique folder into your Penumbra mod directory (then try API reload)." />
+                  <Button Content="Import modpack to Penumbra…" Click="OnImportPenumbra" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+
+              <Border Padding="12" Background="#12000000" CornerRadius="6">
+                <StackPanel Spacing="8">
+                  <TextBlock FontWeight="SemiBold" Text="Upgrade modpack" />
+                  <TextBlock Opacity="0.7" Text="Dawntrail /upgrade → new .ttmp2 / .pmp file." />
+                  <Button Content="Upgrade modpack…" Click="OnUpgradeModpack" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+
+              <Border Padding="12" Background="#12000000" CornerRadius="6">
+                <StackPanel Spacing="8">
+                  <TextBlock FontWeight="SemiBold" Text="Resave / convert" />
+                  <TextBlock Opacity="0.7" TextWrapping="Wrap"
+                             Text="Re-encode a modpack. Change extension (.ttmp2 ↔ .pmp) or write an unzipped PMP folder." />
+                  <Button Content="Resave modpack…" Click="OnResaveModpack" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+
+              <Border Padding="12" Background="#12000000" CornerRadius="6">
+                <StackPanel Spacing="8">
+                  <TextBlock FontWeight="SemiBold" Text="Batch upgrade folder" />
+                  <TextBlock Opacity="0.7" Text="Upgrade every modpack in a folder into another folder." />
+                  <Button Content="Batch upgrade folder…" Click="OnBatchUpgrade" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- Extract -->
+        <TabItem Header="Extract / List">
+          <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto">
+            <TextBlock Grid.Row="0" Opacity="0.75" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Text="Extract game files by internal path, or list all files for a root id (e.g. c0101h0010)." />
+
+            <Border Grid.Row="1" Padding="12" Background="#12000000" CornerRadius="6" Margin="0,0,0,12">
+              <StackPanel Spacing="8">
+                <TextBlock FontWeight="SemiBold" Text="Extract file" />
+                <TextBox Name="ExtractPathBox" Watermark="chara/weapon/w1234/obj/body/b0001/model/w1234b0001.mdl" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <CheckBox Name="ExtractSqpackBox" Content="Keep sqpack/raw extension match" />
+                  <Button Content="Extract…" Click="OnExtractFile" />
+                </StackPanel>
+                <TextBlock FontWeight="SemiBold" Margin="0,8,0,0" Text="List root files" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBox Grid.Column="0" Name="RootIdBox" Watermark="c0101h0010" Margin="0,0,8,0" />
+                  <Button Grid.Column="1" Content="List" Click="OnListRoot" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <TextBox Grid.Row="2" Name="ExtractOutputBox" IsReadOnly="True" AcceptsReturn="True"
+                     TextWrapping="Wrap" FontFamily="monospace" />
+          </Grid>
+        </TabItem>
+
+        <!-- Library -->
+        <TabItem Header="Library">
+          <StackPanel Margin="12" Spacing="12">
+            <TextBlock Name="LibraryInfoBox" Opacity="0.85" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Open Penumbra mods folder" Click="OnOpenPenumbra" />
+              <Button Content="Open TexTools ModPacks" Click="OnOpenModPacks" />
+              <Button Content="Open TexTools data" Click="OnOpenDataRoot" />
+            </StackPanel>
+            <Button Content="Run doctor" Click="OnRunDoctor" HorizontalAlignment="Left" />
+            <TextBox Name="LibraryOutputBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                     MinHeight="220" FontFamily="monospace" />
+          </StackPanel>
+        </TabItem>
+
+        <!-- Maintenance -->
+        <TabItem Header="Maintenance">
+          <StackPanel Margin="12" Spacing="12">
+            <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                       Text="Index backups matter if you write to game DATs. Pure Penumbra users usually skip this. Restore requires DAT writing enabled and matching game version." />
+            <Border Padding="12" Background="#12000000" CornerRadius="6">
+              <StackPanel Spacing="8">
+                <TextBlock FontWeight="SemiBold" Text="Index backups" />
+                <TextBlock Name="BackupStatusBox" Opacity="0.8" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="Open backups folder" Click="OnOpenBackups" />
+                  <Button Content="Refresh backup status" Click="OnRefreshBackups" />
+                </StackPanel>
+                <TextBlock Opacity="0.65" TextWrapping="Wrap"
+                           Text="Create/restore via classic TexTools or CLI when DAT writing is intentional. Avalonia does not enable Dat.AllowDatAlteration by default (safer for Penumbra)." />
+              </StackPanel>
+            </Border>
+            <Border Padding="12" Background="#12000000" CornerRadius="6">
+              <StackPanel Spacing="8">
+                <TextBlock FontWeight="SemiBold" Text="Not ported yet (classic WPF)" />
+                <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                           Text="• Interactive 3D model / texture viewers (Helix/DirectX)&#x0a;• Live modlist enable/disable against game DATs&#x0a;• Material/colorset visual editors&#x0a;• Item converter / project manager / transaction UI&#x0a;• FBX convert needs converter.exe (Wine) until native converters ship" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </TabItem>
+
+        <!-- Log -->
+        <TabItem Header="Log">
+          <TextBox Name="OutputBox" Margin="8" IsReadOnly="True" AcceptsReturn="True"
+                   TextWrapping="Wrap" FontFamily="monospace" />
+        </TabItem>
+      </TabControl>
+    </DockPanel>
   </Panel>
 </Window>

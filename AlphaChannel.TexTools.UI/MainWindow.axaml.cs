@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -9,11 +10,12 @@ using System.Text;
 using System.Threading.Tasks;
 using xivModdingFramework.Cache;
 using xivModdingFramework.Helpers;
-
 namespace AlphaChannel.TexTools.UI;
 
 public partial class MainWindow : Window
 {
+    private bool _busy;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -23,11 +25,41 @@ public partial class MainWindow : Window
                            ?? "";
         UpdateContinueEnabled();
 
-        // Skip straight to workspace when a valid path is already configured.
         var configured = ConsoleConfig.Get().XivPath;
         if (IsValidSqPackDir(configured))
-            ShowWorkspace();
+            _ = EnterWorkspaceAsync();
     }
+
+    private async Task EnterWorkspaceAsync()
+    {
+        ShowWorkspaceChrome();
+        RefreshLibraryInfo();
+        OnRefreshBackups(null!, new RoutedEventArgs());
+        await RunBusyAsync("Initializing…", async log =>
+        {
+            await GameSession.EnsureInitializedAsync(log);
+            log.Report("Ready. Use Modpacks → Import to Penumbra for the classic TexTools→Penumbra flow.");
+        });
+    }
+
+    private void ShowWorkspaceChrome()
+    {
+        var path = ConsoleConfig.Get().XivPath ?? ConsoleConfig.ResolveDefaultXivPath() ?? "";
+        WorkspacePathLabel.Text = $"Game: {path}";
+        SetupPanel.IsVisible = false;
+        WorkspacePanel.IsVisible = true;
+    }
+
+    private void ShowSetup()
+    {
+        WorkspacePanel.IsVisible = false;
+        SetupPanel.IsVisible = true;
+        GameSession.Reset();
+        RefreshPaths();
+        UpdateContinueEnabled();
+    }
+
+    private void OnChangePath(object? sender, RoutedEventArgs e) => ShowSetup();
 
     private void OnRefresh(object? sender, RoutedEventArgs e)
     {
@@ -35,7 +67,7 @@ public partial class MainWindow : Window
         UpdateContinueEnabled();
     }
 
-    private void OnContinue(object? sender, RoutedEventArgs e)
+    private async void OnContinue(object? sender, RoutedEventArgs e)
     {
         var path = NormalizeToSqPack(GamePathBox.Text?.Trim() ?? "");
         if (!IsValidSqPackDir(path))
@@ -47,10 +79,8 @@ public partial class MainWindow : Window
         if (!string.Equals(ConsoleConfig.Get().XivPath, path, StringComparison.Ordinal))
             ConsoleConfig.Update(c => c.XivPath = path);
 
-        ShowWorkspace();
+        await EnterWorkspaceAsync();
     }
-
-    private void OnChangePath(object? sender, RoutedEventArgs e) => ShowSetup();
 
     private async void OnBrowseInstall(object? sender, RoutedEventArgs e)
     {
@@ -66,7 +96,7 @@ public partial class MainWindow : Window
             start = Directory.GetParent(start)?.FullName ?? start;
         }
 
-        PathStatus.Text = "Opening system folder picker (Dolphin/KDE if available)…";
+        PathStatus.Text = "Opening system folder picker…";
         var result = await NativeFolderPicker.PickFolderAsync(this, start);
         if (string.IsNullOrWhiteSpace(result))
         {
@@ -76,145 +106,173 @@ public partial class MainWindow : Window
 
         var normalized = NormalizeToSqPack(result);
         GamePathBox.Text = normalized;
-        PathStatus.Text = Directory.Exists(normalized)
-            ? $"Selected: {normalized}"
-            : $"Selected path missing sqpack/ffxiv: {result}";
+        PathStatus.Text = $"Selected: {normalized}";
         UpdateContinueEnabled();
     }
 
     private void OnSavePath(object? sender, RoutedEventArgs e)
     {
-        var path = GamePathBox.Text?.Trim() ?? "";
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            PathStatus.Text = "Enter or browse to a path first.";
-            return;
-        }
-
-        path = NormalizeToSqPack(path);
+        var path = NormalizeToSqPack(GamePathBox.Text?.Trim() ?? "");
         if (!IsValidSqPackDir(path))
         {
             var fromLauncher = NormalizeToSqPack(PenumbraAPI.GetQuickLauncherGameDirectory() ?? "");
             if (IsValidSqPackDir(fromLauncher))
             {
-                PathStatus.Text =
-                    $"'{path}' is not a sqpack/ffxiv folder. launcher.ini points to the real install — click “Read launcher.ini”, then Save.\nSuggested: {fromLauncher}";
                 GamePathBox.Text = fromLauncher;
-                UpdateContinueEnabled();
-                return;
+                PathStatus.Text = $"Invalid path. Suggested from launcher.ini: {fromLauncher}";
             }
-
-            PathStatus.Text =
-                $"Not a valid FFXIV sqpack folder (need *.win32.index files).\nGot: {path}";
+            else
+            {
+                PathStatus.Text = "Not a valid sqpack/ffxiv folder.";
+            }
             UpdateContinueEnabled();
             return;
         }
 
         ConsoleConfig.Update(c => c.XivPath = path);
         GamePathBox.Text = path;
-        PathStatus.Text = $"Saved. Click Continue →";
+        PathStatus.Text = "Saved. Click Continue →";
         RefreshPaths();
         UpdateContinueEnabled();
     }
 
     private void OnUseXlcore(object? sender, RoutedEventArgs e)
     {
-        var candidate = Path.Combine(PlatformPaths.GetLauncherConfigRoot(), "ffxiv");
-        var normalized = NormalizeToSqPack(candidate);
-        if (IsValidSqPackDir(normalized))
-        {
-            GamePathBox.Text = normalized;
-            PathStatus.Text = $"Using {normalized}";
-            UpdateContinueEnabled();
-            return;
-        }
-
+        var candidate = NormalizeToSqPack(Path.Combine(PlatformPaths.GetLauncherConfigRoot(), "ffxiv"));
         var fromLauncher = NormalizeToSqPack(PenumbraAPI.GetQuickLauncherGameDirectory() ?? "");
-        if (IsValidSqPackDir(fromLauncher))
+        if (IsValidSqPackDir(candidate))
+        {
+            GamePathBox.Text = candidate;
+            PathStatus.Text = $"Using {candidate}";
+        }
+        else if (IsValidSqPackDir(fromLauncher))
         {
             GamePathBox.Text = fromLauncher;
-            PathStatus.Text =
-                $"~/.xlcore/ffxiv has no sqpack data. Using GamePath from launcher.ini:\n{fromLauncher}";
-            UpdateContinueEnabled();
-            return;
+            PathStatus.Text = $"Using launcher.ini: {fromLauncher}";
         }
-
-        GamePathBox.Text = normalized;
-        PathStatus.Text = "~/.xlcore/ffxiv has no game/sqpack/ffxiv. Use Browse or Read launcher.ini.";
+        else
+        {
+            PathStatus.Text = "No valid ~/.xlcore game data. Use Browse or Read launcher.ini.";
+        }
         UpdateContinueEnabled();
     }
 
     private void OnReadLauncherIni(object? sender, RoutedEventArgs e)
     {
-        var fromLauncher = PenumbraAPI.GetQuickLauncherGameDirectory();
-        if (string.IsNullOrWhiteSpace(fromLauncher))
+        var fromLauncher = NormalizeToSqPack(PenumbraAPI.GetQuickLauncherGameDirectory() ?? "");
+        if (!IsValidSqPackDir(fromLauncher))
         {
-            PathStatus.Text = "No GamePath in launcher.ini / launcherConfigV3.json.";
+            PathStatus.Text = "No GamePath in launcher.ini.";
             return;
         }
-
-        var normalized = NormalizeToSqPack(fromLauncher);
-        GamePathBox.Text = normalized;
-        PathStatus.Text = IsValidSqPackDir(normalized)
-            ? $"From launcher.ini — click Save, then Continue →\n{normalized}"
-            : $"From launcher.ini but sqpack not found at:\n{normalized}";
+        GamePathBox.Text = fromLauncher;
+        PathStatus.Text = $"From launcher.ini — Save, then Continue →\n{fromLauncher}";
         UpdateContinueEnabled();
+    }
+
+    private async void OnImportPenumbra(object? sender, RoutedEventArgs e)
+    {
+        var src = await PickModpackOpenAsync("Import modpack to Penumbra");
+        if (src == null) return;
+        await RunBusyAsync("Importing to Penumbra…", async log =>
+        {
+            var dest = await TexToolsActions.ImportToPenumbraAsync(src, log);
+            log.Report($"Done: {dest}");
+        });
     }
 
     private async void OnUpgradeModpack(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Select modpack to upgrade",
-            AllowMultiple = false,
-            FileTypeFilter =
-            [
-                new FilePickerFileType("TexTools / Penumbra modpacks")
-                {
-                    Patterns = ["*.ttmp2", "*.ttmp", "*.pmp", "*.zip"]
-                },
-                new FilePickerFileType("All files") { Patterns = ["*"] },
-            ],
-        });
-        if (files.Count == 0) return;
-
-        var src = files[0].TryGetLocalPath();
-        if (string.IsNullOrWhiteSpace(src) || !File.Exists(src))
-        {
-            AppendOutput("Could not resolve selected file path.");
-            return;
-        }
-
-        var destSuggestion = Path.Combine(
-            Path.GetDirectoryName(src) ?? ".",
+        var src = await PickModpackOpenAsync("Select modpack to upgrade");
+        if (src == null) return;
+        var dest = await PickModpackSaveAsync(
+            "Save upgraded modpack as",
             Path.GetFileNameWithoutExtension(src) + "-upgraded" + Path.GetExtension(src));
-
-        var save = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        if (dest == null) return;
+        await RunBusyAsync("Upgrading…", async log =>
         {
-            Title = "Save upgraded modpack as",
-            SuggestedFileName = Path.GetFileName(destSuggestion),
-            DefaultExtension = Path.GetExtension(src).TrimStart('.'),
-            FileTypeChoices =
-            [
-                new FilePickerFileType("Modpack")
-                {
-                    Patterns = ["*" + Path.GetExtension(src)]
-                },
-            ],
+            await TexToolsActions.UpgradeModpackAsync(src, dest, log);
         });
-        if (save == null) return;
+    }
 
-        var dest = save.TryGetLocalPath();
-        if (string.IsNullOrWhiteSpace(dest))
+    private async void OnResaveModpack(object? sender, RoutedEventArgs e)
+    {
+        var src = await PickModpackOpenAsync("Select modpack to resave");
+        if (src == null) return;
+        var dest = await PickModpackSaveAsync(
+            "Save as (.ttmp2 / .pmp)",
+            Path.GetFileNameWithoutExtension(src) + "-resaved.ttmp2");
+        if (dest == null) return;
+        await RunBusyAsync("Resaving…", async log =>
         {
-            AppendOutput("Could not resolve destination path.");
+            await TexToolsActions.ResaveModpackAsync(src, dest, log);
+        });
+    }
+
+    private async void OnBatchUpgrade(object? sender, RoutedEventArgs e)
+    {
+        var srcFolder = await NativeFolderPicker.PickFolderAsync(this,
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        if (string.IsNullOrWhiteSpace(srcFolder)) return;
+        var destFolder = await NativeFolderPicker.PickFolderAsync(this, srcFolder);
+        if (string.IsNullOrWhiteSpace(destFolder)) return;
+        await RunBusyAsync("Batch upgrading…", async log =>
+        {
+            await TexToolsActions.BatchUpgradeFolderAsync(srcFolder, destFolder, log);
+        });
+    }
+
+    private async void OnExtractFile(object? sender, RoutedEventArgs e)
+    {
+        var internalPath = ExtractPathBox.Text?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(internalPath))
+        {
+            AppendExtract("Enter an internal FFXIV path first.");
             return;
         }
 
-        AppendOutput($"Upgrading:\n  {src}\n→ {dest}\n…");
-        var (code, log) = await RunConsoleToolsAsync("/upgrade", src, dest);
-        AppendOutput(log);
-        AppendOutput(code == 0 ? "Upgrade finished OK." : $"Upgrade exited with code {code}.");
+        var suggested = Path.GetFileName(internalPath.Replace('/', Path.DirectorySeparatorChar));
+        var dest = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save extracted file as",
+            SuggestedFileName = suggested,
+        });
+        var destPath = dest?.TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(destPath)) return;
+
+        await RunBusyAsync("Extracting…", async log =>
+        {
+            await TexToolsActions.ExtractFileAsync(internalPath, destPath, ExtractSqpackBox.IsChecked == true, log);
+            AppendExtract($"OK → {destPath}");
+        });
+    }
+
+    private async void OnListRoot(object? sender, RoutedEventArgs e)
+    {
+        var root = RootIdBox.Text?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            AppendExtract("Enter a root id (e.g. c0101h0010).");
+            return;
+        }
+
+        await RunBusyAsync("Listing root…", async log =>
+        {
+            var files = await TexToolsActions.ListRootFilesAsync(root, log);
+            ExtractOutputBox.Text = string.Join(Environment.NewLine, files);
+            AppendLog($"Listed {files.Count} files for {root}");
+        });
+    }
+
+    private void OnOpenPenumbra(object? sender, RoutedEventArgs e)
+    {
+        var dir = PenumbraAPI.GetPenumbraDirectory();
+        if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+        {
+            AppendLibrary("Penumbra mod directory not found.");
+            return;
+        }
+        OpenPath(dir);
     }
 
     private void OnOpenModPacks(object? sender, RoutedEventArgs e) =>
@@ -223,114 +281,155 @@ public partial class MainWindow : Window
     private void OnOpenDataRoot(object? sender, RoutedEventArgs e) =>
         OpenPath(PlatformPaths.GetTexToolsDataRoot());
 
+    private void OnOpenBackups(object? sender, RoutedEventArgs e) =>
+        OpenPath(PlatformPaths.GetTexToolsIndexBackupsDirectory());
+
+    private void OnRefreshBackups(object? sender, RoutedEventArgs e)
+    {
+        var dir = PlatformPaths.GetTexToolsIndexBackupsDirectory();
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var backups = ProblemChecker.GetAvailableIndexBackups(dir);
+            var valid = false;
+            try { valid = GameSession.IsReady && ProblemChecker.AreBackupsValid(dir); }
+            catch { /* game info may be unset */ }
+
+            BackupStatusBox.Text =
+                $"Folder: {dir}\n" +
+                $"Index files found: {backups.Count}\n" +
+                $"Valid for current game version: {(GameSession.IsReady ? (valid ? "yes" : "no / incomplete") : "(init game first)")}";
+        }
+        catch (Exception ex)
+        {
+            BackupStatusBox.Text = $"Backup status error: {ex.Message}";
+        }
+    }
+
     private async void OnRunDoctor(object? sender, RoutedEventArgs e)
     {
-        AppendOutput("Running /doctor …");
-        var (code, log) = await RunConsoleToolsAsync("/doctor");
-        AppendOutput(log);
-        AppendOutput(code == 0 ? "Doctor OK." : $"Doctor exited with code {code}.");
+        await RunBusyAsync("Doctor…", async log =>
+        {
+            RefreshLibraryInfo();
+            var sb = new StringBuilder();
+            sb.AppendLine($"OS: Linux / .NET {Environment.Version}");
+            sb.AppendLine($"Game: {ConsoleConfig.Get().XivPath}");
+            sb.AppendLine($"Penumbra: {PenumbraAPI.GetPenumbraDirectory() ?? "(none)"}");
+            sb.AppendLine($"TexTools data: {PlatformPaths.GetTexToolsDataRoot()}");
+            sb.AppendLine($"ModPacks: {PlatformPaths.GetTexToolsModPacksDirectory()}");
+            sb.AppendLine($"Backups: {PlatformPaths.GetTexToolsIndexBackupsDirectory()}");
+            sb.AppendLine($"launcher.ini: {PlatformPaths.GetLauncherIniPath()}");
+            LibraryOutputBox.Text = sb.ToString();
+            log.Report("Doctor summary written to Library tab.");
+            await Task.CompletedTask;
+        });
     }
 
-    private void ShowWorkspace()
+    private void RefreshLibraryInfo()
     {
-        var path = ConsoleConfig.Get().XivPath ?? ConsoleConfig.ResolveDefaultXivPath() ?? "";
-        WorkspacePathLabel.Text = $"Game: {path}";
-        SetupPanel.IsVisible = false;
-        WorkspacePanel.IsVisible = true;
-        OutputBox.Text =
-            "Native workspace ready.\n" +
-            "• Upgrade modpack — Dawntrail /upgrade via ConsoleTools\n" +
-            "• Open folders — ModPacks / TexTools data\n" +
-            "• Classic full UI still needs Wine (currently crashing on this GPU) or more Avalonia work.\n";
+        var pen = PenumbraAPI.GetPenumbraDirectory();
+        LibraryInfoBox.Text =
+            $"Penumbra mod directory: {(string.IsNullOrWhiteSpace(pen) ? "(not found — install Penumbra / set ModDirectory)" : pen)}\n" +
+            $"TexTools ModPacks: {PlatformPaths.GetTexToolsModPacksDirectory()}\n" +
+            $"Game path: {ConsoleConfig.Get().XivPath}";
     }
 
-    private void ShowSetup()
+    private async Task<string?> PickModpackOpenAsync(string title)
     {
-        WorkspacePanel.IsVisible = false;
-        SetupPanel.IsVisible = true;
-        RefreshPaths();
-        UpdateContinueEnabled();
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Modpacks")
+                {
+                    Patterns = ["*.ttmp2", "*.ttmp", "*.pmp", "*.zip"]
+                },
+                new FilePickerFileType("All") { Patterns = ["*"] },
+            ],
+        });
+        return files.Count > 0 ? files[0].TryGetLocalPath() : null;
     }
 
-    private void UpdateContinueEnabled()
+    private async Task<string?> PickModpackSaveAsync(string title, string suggested)
     {
-        var path = NormalizeToSqPack(GamePathBox.Text?.Trim() ?? "");
-        ContinueButton.IsEnabled = IsValidSqPackDir(path);
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = title,
+            SuggestedFileName = suggested,
+            FileTypeChoices =
+            [
+                new FilePickerFileType("TTMP2") { Patterns = ["*.ttmp2"] },
+                new FilePickerFileType("PMP") { Patterns = ["*.pmp"] },
+                new FilePickerFileType("All") { Patterns = ["*"] },
+            ],
+        });
+        return file?.TryGetLocalPath();
     }
 
-    private void AppendOutput(string text)
+    private async Task RunBusyAsync(string busyLabel, Func<IProgress<string>, Task> work)
+    {
+        if (_busy) return;
+        _busy = true;
+        BusyText.Text = busyLabel;
+        var log = new Progress<string>(msg =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                BusyText.Text = msg;
+                AppendLog(msg);
+            });
+        });
+        try
+        {
+            await work(log);
+        }
+        catch (Exception ex)
+        {
+            AppendLog("ERROR: " + ex);
+            BusyText.Text = "Error — see Log tab.";
+            MainTabs.SelectedIndex = MainTabs.ItemCount - 1;
+        }
+        finally
+        {
+            _busy = false;
+            if (BusyText.Text.StartsWith("ERROR", StringComparison.Ordinal)
+                || BusyText.Text.StartsWith("Error", StringComparison.Ordinal))
+            { }
+            else if (!BusyText.Text.Contains("Ready", StringComparison.Ordinal))
+            {
+                BusyText.Text = "Ready.";
+            }
+        }
+    }
+
+    private void AppendLog(string text)
     {
         if (string.IsNullOrWhiteSpace(OutputBox.Text))
             OutputBox.Text = text;
         else
-            OutputBox.Text += "\n" + text;
+            OutputBox.Text += Environment.NewLine + text;
     }
 
-    private static string FindConsoleTools()
+    private void AppendExtract(string text)
     {
-        var baseDir = AppContext.BaseDirectory;
-        var candidates = new[]
-        {
-            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "ConsoleTools", "bin", "Release", "net8.0", "ConsoleTools")),
-            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "ConsoleTools", "bin", "Debug", "net8.0", "ConsoleTools")),
-            Path.Combine(Directory.GetCurrentDirectory(), "ConsoleTools", "bin", "Release", "net8.0", "ConsoleTools"),
-        };
-        foreach (var c in candidates)
-        {
-            if (File.Exists(c)) return c;
-            if (File.Exists(c + ".dll")) return "dotnet|" + c + ".dll";
-        }
-
-        // Sibling of UI dll when published side-by-side
-        var beside = Path.Combine(baseDir, "ConsoleTools");
-        if (File.Exists(beside)) return beside;
-        return candidates[0];
-    }
-
-    private static async Task<(int ExitCode, string Output)> RunConsoleToolsAsync(params string[] args)
-    {
-        var tool = FindConsoleTools();
-        var psi = new ProcessStartInfo
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        if (tool.StartsWith("dotnet|", StringComparison.Ordinal))
-        {
-            psi.FileName = "dotnet";
-            psi.ArgumentList.Add(tool["dotnet|".Length..]);
-        }
+        if (string.IsNullOrWhiteSpace(ExtractOutputBox.Text))
+            ExtractOutputBox.Text = text;
         else
-        {
-            psi.FileName = tool;
-        }
+            ExtractOutputBox.Text += Environment.NewLine + text;
+        AppendLog(text);
+    }
 
-        foreach (var a in args)
-            psi.ArgumentList.Add(a);
+    private void AppendLibrary(string text)
+    {
+        LibraryOutputBox.Text = text;
+        AppendLog(text);
+    }
 
-        var xiv = ConsoleConfig.Get().XivPath ?? ConsoleConfig.ResolveDefaultXivPath();
-        if (!string.IsNullOrWhiteSpace(xiv))
-            psi.Environment["XIV_PATH"] = xiv;
-
-        try
-        {
-            using var proc = Process.Start(psi);
-            if (proc == null) return (-1, "Failed to start ConsoleTools.");
-            var stdout = await proc.StandardOutput.ReadToEndAsync();
-            var stderr = await proc.StandardError.ReadToEndAsync();
-            await proc.WaitForExitAsync();
-            var sb = new StringBuilder();
-            if (!string.IsNullOrWhiteSpace(stdout)) sb.AppendLine(stdout.TrimEnd());
-            if (!string.IsNullOrWhiteSpace(stderr)) sb.AppendLine(stderr.TrimEnd());
-            return (proc.ExitCode, sb.ToString());
-        }
-        catch (Exception ex)
-        {
-            return (-1, $"Failed to run ConsoleTools ({tool}): {ex.Message}");
-        }
+    private void UpdateContinueEnabled()
+    {
+        ContinueButton.IsEnabled = IsValidSqPackDir(NormalizeToSqPack(GamePathBox.Text?.Trim() ?? ""));
     }
 
     private static void OpenPath(string path)
@@ -338,11 +437,7 @@ public partial class MainWindow : Window
         try
         {
             Directory.CreateDirectory(path);
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = path,
-                UseShellExecute = true,
-            });
+            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
         }
         catch (Exception ex)
         {
@@ -365,37 +460,23 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
             return false;
-        try
-        {
-            return Directory.EnumerateFiles(path, "*.win32.index").Any();
-        }
-        catch
-        {
-            return false;
-        }
+        try { return Directory.EnumerateFiles(path, "*.win32.index").Any(); }
+        catch { return false; }
     }
 
     private void RefreshPaths()
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"OS: {(PlatformPaths.IsLinux ? "Linux" : PlatformPaths.IsWindows ? "Windows" : PlatformPaths.IsMacOS ? "macOS" : "unknown")}");
         sb.AppendLine($"Launcher root: {PlatformPaths.GetLauncherConfigRoot()}");
         sb.AppendLine($"launcher.ini: {(File.Exists(PlatformPaths.GetLauncherIniPath()) ? "found" : "missing")}");
-        sb.AppendLine($"launcherConfigV3: {(File.Exists(PlatformPaths.GetLauncherConfigV3Path()) ? "found" : "missing (normal on Linux)")}");
-        var detected = ConsoleConfig.ResolveDefaultXivPath();
-        var configured = ConsoleConfig.Get().XivPath;
-        sb.AppendLine($"Game path (auto): {detected ?? "(not found)"}");
-        sb.AppendLine($"Configured XivPath: {configured}");
-        if (!string.IsNullOrWhiteSpace(configured) && !IsValidSqPackDir(configured))
-        {
-            sb.AppendLine("WARNING: Configured XivPath is not a valid sqpack/ffxiv folder.");
-            if (!string.IsNullOrWhiteSpace(detected))
-                sb.AppendLine($"Click “Read launcher.ini” then Save to use: {detected}");
-        }
+        sb.AppendLine($"Game path (auto): {ConsoleConfig.ResolveDefaultXivPath() ?? "(not found)"}");
+        sb.AppendLine($"Configured XivPath: {ConsoleConfig.Get().XivPath}");
+        sb.AppendLine($"Penumbra: {PenumbraAPI.GetPenumbraDirectory() ?? "(none)"}");
         sb.AppendLine($"TexTools data: {PlatformPaths.GetTexToolsDataRoot()}");
-        sb.AppendLine($"ModPacks: {PlatformPaths.GetTexToolsModPacksDirectory()}");
         PathsBox.Text = sb.ToString();
 
+        var configured = ConsoleConfig.Get().XivPath;
+        var detected = ConsoleConfig.ResolveDefaultXivPath();
         if (IsValidSqPackDir(configured))
             GamePathBox.Text = configured!;
         else if (!string.IsNullOrWhiteSpace(detected))
