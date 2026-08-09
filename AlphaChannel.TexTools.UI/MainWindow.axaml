@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="AlphaChannel.TexTools.UI.MainWindow"
+        Title="AlphaChannel TexTools"
+        Width="760" Height="520"
+        MinWidth="600" MinHeight="400">
+  <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <TextBlock Grid.Row="0" FontSize="28" FontWeight="SemiBold" Text="AlphaChannel TexTools" />
+    <TextBlock Grid.Row="1" Margin="0,8,0,16" Opacity="0.75" TextWrapping="Wrap"
+               Text="Native Linux shell. Find your FFXIV install below — hidden folders like ~/.xlcore are visible in the browser." />
+
+    <Border Grid.Row="2" Padding="12" Margin="0,0,0,12" Background="#18000000" CornerRadius="6">
+      <StackPanel Spacing="8">
+        <TextBlock FontWeight="SemiBold" Text="Find my FFXIV install" />
+        <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                   Text="Pick the game root (folder that contains game/) or the sqpack/ffxiv folder. Hidden folders are shown by default." />
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <TextBox Grid.Column="0" Name="GamePathBox" Watermark="/path/to/game/sqpack/ffxiv" Margin="0,0,8,0" />
+          <Button Grid.Column="1" Content="Browse…" Click="OnBrowseInstall" Margin="0,0,8,0" />
+          <Button Grid.Column="2" Content="Save" Click="OnSavePath" />
+        </Grid>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Use ~/.xlcore/ffxiv" Click="OnUseXlcore" />
+          <Button Content="Read launcher.ini" Click="OnReadLauncherIni" />
+        </StackPanel>
+        <TextBlock Name="PathStatus" Opacity="0.8" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <StackPanel Grid.Row="3" Spacing="10">
+      <TextBlock FontWeight="SemiBold" Text="Detected paths" />
+      <TextBox Name="PathsBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+               MinHeight="140" FontFamily="monospace" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,16,0,0">
+      <Button Name="RefreshButton" Content="Refresh" Click="OnRefresh" />
+      <Button Name="OpenCliHelpButton" Content="CLI help hint" Click="OnCliHelp" />
+    </StackPanel>
+  </Grid>
+</Window>

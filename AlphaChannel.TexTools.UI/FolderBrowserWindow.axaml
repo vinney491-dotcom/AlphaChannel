@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="AlphaChannel.TexTools.UI.FolderBrowserWindow"
+        Title="Find FFXIV install"
+        Width="720" Height="520"
+        MinWidth="560" MinHeight="400"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="16">
+    <TextBlock DockPanel.Dock="Top" FontSize="18" FontWeight="SemiBold"
+               Text="Browse for your FFXIV folder" Margin="0,0,0,4" />
+    <TextBlock DockPanel.Dock="Top" Opacity="0.75" TextWrapping="Wrap" Margin="0,0,0,12"
+               Text="Hidden folders (names starting with .) are shown when enabled — use this to open ~/.xlcore or other dot directories. Select either the game root (contains game/) or the sqpack/ffxiv folder." />
+
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+      <TextBox Name="PathBox" MinWidth="360" HorizontalAlignment="Stretch"
+               KeyDown="OnPathKeyDown" />
+      <Button Content="Go" Click="OnGo" />
+      <ToggleButton Name="ShowHiddenToggle" Content="Show hidden folders" IsChecked="True"
+                    Click="OnToggleHidden" />
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+      <Button Content="Home" Click="OnJumpHome" />
+      <Button Content="~/.xlcore" Click="OnJumpXlcore" />
+      <Button Content="Parent" Click="OnParent" />
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="12"
+                HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Content="Cancel" Click="OnCancel" />
+      <Button Name="SelectButton" Content="Select this folder" Click="OnSelect" />
+    </StackPanel>
+
+    <TextBlock DockPanel.Dock="Bottom" Name="StatusText" Opacity="0.7" Margin="0,8,0,0" />
+
+    <ListBox Name="EntriesList" DoubleTapped="OnEntryActivate" />
+  </DockPanel>
+</Window>
