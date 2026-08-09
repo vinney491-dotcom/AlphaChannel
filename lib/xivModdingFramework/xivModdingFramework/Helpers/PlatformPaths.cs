@@ -193,5 +193,64 @@ namespace xivModdingFramework.Helpers
 
             return IsWindows ? path.Substring(0, 1) : "/";
         }
+
+        /// <summary>
+        /// Resolve a bundled Resources/... file next to the entry/executing assembly
+        /// (not the process CWD). Upstream often used "./Resources/..." which breaks
+        /// when ConsoleTools is launched from the repo root on Linux.
+        /// </summary>
+        public static string ResolveBundledResource(string relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+                return relativePath;
+
+            relativePath = relativePath
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .Replace('/', Path.DirectorySeparatorChar)
+                .TrimStart('.', Path.DirectorySeparatorChar);
+
+            foreach (var root in EnumerateAssemblyBaseDirectories())
+            {
+                var candidate = Path.Combine(root, relativePath);
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+
+            // Last resort: CWD-relative (legacy Windows TexTools habit).
+            var cwd = Path.GetFullPath(relativePath);
+            return cwd;
+        }
+
+        private static IEnumerable<string> EnumerateAssemblyBaseDirectories()
+        {
+            string DirOf(System.Reflection.Assembly a)
+            {
+                try
+                {
+                    var loc = a?.Location;
+                    if (string.IsNullOrWhiteSpace(loc)) return null;
+                    return Path.GetDirectoryName(loc);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var list = new List<string>();
+            void Add(string d)
+            {
+                if (string.IsNullOrWhiteSpace(d)) return;
+                d = Path.GetFullPath(d);
+                if (seen.Add(d)) list.Add(d);
+            }
+
+            Add(DirOf(System.Reflection.Assembly.GetEntryAssembly()));
+            Add(DirOf(typeof(PlatformPaths).Assembly));
+            Add(AppContext.BaseDirectory);
+            Add(Directory.GetCurrentDirectory());
+            return list;
+        }
     }
 }

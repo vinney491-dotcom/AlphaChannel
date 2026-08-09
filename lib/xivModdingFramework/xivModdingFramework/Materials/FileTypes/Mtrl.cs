@@ -1495,7 +1495,7 @@ namespace xivModdingFramework.Materials.FileTypes
         #region Shader DB Compilation
         public static async Task UpdateShaderDB(bool useIndex2 = false)
         {
-            const string _ShaderDbFilePath = "./Resources/DB/shader_info.db";
+            var _ShaderDbFilePath = Helpers.PlatformPaths.ResolveBundledResource("Resources/DB/shader_info.db");
             const string _ShaderDbCreationScript = "CreateShaderDB.sql";
 
             var materials = await GetAllMtrlInfo(useIndex2);
@@ -1625,7 +1625,7 @@ namespace xivModdingFramework.Materials.FileTypes
 
         public static async Task ShrinkShaderDB()
         {
-            const string _ShaderDbFilePath = "./Resources/DB/shader_info.db";
+            var _ShaderDbFilePath = Helpers.PlatformPaths.ResolveBundledResource("Resources/DB/shader_info.db");
             const string _ShrinkDbScript = "ShrinkShaderCache.sql";
             var connectionString = "Data Source=" + _ShaderDbFilePath + ";Pooling=False;";
             using (var db = new SQLiteConnection(connectionString))

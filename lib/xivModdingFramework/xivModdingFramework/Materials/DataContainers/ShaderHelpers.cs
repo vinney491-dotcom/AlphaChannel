@@ -183,7 +183,7 @@ namespace xivModdingFramework.Materials.DataContainers
 
                 try
                 {
-                    const string _dbPath = "./Resources/DB/shader_info.db";
+                    var _dbPath = Helpers.PlatformPaths.ResolveBundledResource("Resources/DB/shader_info.db");
                     var connectionString = "Data Source=" + _dbPath + ";Pooling=False;";
 
                     // Spawn a DB connection to do the raw queries.
