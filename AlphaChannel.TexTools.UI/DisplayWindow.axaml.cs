@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Avalonia.Controls;
 
 namespace AlphaChannel.TexTools.UI;
@@ -12,10 +13,20 @@ public partial class DisplayWindow : Window
     {
         InitializeComponent();
         Panel.ShowPopOut = false;
-        Panel.StatusChanged += msg => Title = string.IsNullOrWhiteSpace(path)
-            ? "Item Viewer"
-            : $"Item Viewer — {System.IO.Path.GetFileName(path)}";
+        Panel.StatusChanged += msg =>
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+                Title = $"Item Viewer — {System.IO.Path.GetFileName(path)}";
+            else
+                Title = string.IsNullOrWhiteSpace(msg) ? "Item Viewer" : $"Item Viewer — {msg}";
+        };
         if (!string.IsNullOrWhiteSpace(path))
             _ = Panel.ShowPathAsync(path);
+    }
+
+    public async Task ShowExternalPathAsync(string externalPath)
+    {
+        Title = $"Item Viewer — {System.IO.Path.GetFileName(externalPath)}";
+        await Panel.ShowExternalAsync(externalPath);
     }
 }

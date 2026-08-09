@@ -32,6 +32,10 @@ public partial class MainWindow : Window
             OnExtractFile(null, new RoutedEventArgs());
             await Task.CompletedTask;
         };
+        AddHandler(DragDrop.DragEnterEvent, OnWindowDragEnter);
+        AddHandler(DragDrop.DragOverEvent, OnWindowDragOver);
+        AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave);
+        AddHandler(DragDrop.DropEvent, OnWindowDrop);
         RefreshPaths();
         GamePathBox.Text = ConsoleConfig.Get().XivPath
                            ?? ConsoleConfig.ResolveDefaultXivPath()
@@ -41,6 +45,161 @@ public partial class MainWindow : Window
         var configured = ConsoleConfig.Get().XivPath;
         if (IsValidSqPackDir(configured))
             _ = EnterWorkspaceAsync();
+    }
+
+    private void OnWindowDragEnter(object? sender, DragEventArgs e) => UpdateDropOverlay(e, show: true);
+
+    private void OnWindowDragOver(object? sender, DragEventArgs e) => UpdateDropOverlay(e, show: true);
+
+    private void OnWindowDragLeave(object? sender, DragEventArgs e)
+    {
+        // Leaving a child still bubbles; only hide when pointer left the window.
+        var pos = e.GetPosition(this);
+        if (pos.X < 0 || pos.Y < 0 || pos.X > Bounds.Width || pos.Y > Bounds.Height)
+            DropOverlay.IsVisible = false;
+    }
+
+    private void UpdateDropOverlay(DragEventArgs e, bool show)
+    {
+        var paths = FileDropSupport.GetLocalPaths(e.Data);
+        var kind = FileDropSupport.Classify(paths);
+        if (kind == DropKind.None)
+        {
+            e.DragEffects = DragDropEffects.None;
+            DropOverlay.IsVisible = false;
+            return;
+        }
+
+        e.DragEffects = DragDropEffects.Copy;
+        if (show)
+        {
+            DropOverlayText.Text = FileDropSupport.OverlayHint(kind, paths.Count);
+            DropOverlay.IsVisible = true;
+        }
+    }
+
+    private async void OnWindowDrop(object? sender, DragEventArgs e)
+    {
+        DropOverlay.IsVisible = false;
+        var paths = FileDropSupport.GetLocalPaths(e.Data);
+        var kind = FileDropSupport.Classify(paths);
+        if (kind == DropKind.None)
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+
+        e.DragEffects = DragDropEffects.Copy;
+        await HandleDroppedPathsAsync(paths, kind);
+    }
+
+    private async Task HandleDroppedPathsAsync(IReadOnlyList<string> paths, DropKind kind)
+    {
+        if (kind == DropKind.GameFolder || (SetupPanel.IsVisible && paths.Any(Directory.Exists)))
+        {
+            var folder = paths.FirstOrDefault(p => Directory.Exists(p) && FileDropSupport.LooksLikeSqPack(p))
+                         ?? paths.FirstOrDefault(Directory.Exists);
+            if (folder != null)
+            {
+                var normalized = NormalizeToSqPack(folder);
+                if (IsValidSqPackDir(normalized))
+                {
+                    GamePathBox.Text = normalized;
+                    PathStatus.Text = $"Dropped game path: {normalized}";
+                    UpdateContinueEnabled();
+                    if (!SetupPanel.IsVisible)
+                        ShowSetup();
+                    BusyText.Text = $"Game path set from drop: {normalized}";
+                    return;
+                }
+            }
+        }
+
+        if (kind is DropKind.Modpack or DropKind.Mixed)
+        {
+            var packs = FileDropSupport.ExpandModpacks(paths).ToList();
+            if (packs.Count == 0)
+            {
+                BusyText.Text = "No modpack files in drop.";
+                return;
+            }
+
+            var summary = packs.Count == 1
+                ? Path.GetFileName(packs[0])
+                : $"{packs.Count} modpacks\n" + string.Join("\n", packs.Take(5).Select(Path.GetFileName))
+                  + (packs.Count > 5 ? $"\n… +{packs.Count - 5} more" : "");
+            var action = await DropActionDialog.ChooseModpackActionAsync(this, summary);
+            if (action == DropModpackAction.Cancel) return;
+
+            if (action == DropModpackAction.ImportPenumbra)
+            {
+                await RunBusyAsync("Importing dropped modpack(s)…", async log =>
+                {
+                    foreach (var src in packs)
+                    {
+                        log.Report($"Import: {Path.GetFileName(src)}");
+                        await TexToolsActions.ImportToPenumbraAsync(src, log);
+                    }
+                });
+                return;
+            }
+
+            if (packs.Count == 1)
+            {
+                var src = packs[0];
+                var dest = await PickModpackSaveAsync(
+                    "Save upgraded modpack as",
+                    Path.GetFileNameWithoutExtension(src) + "-upgraded" + Path.GetExtension(src));
+                if (dest == null) return;
+                await RunBusyAsync("Upgrading dropped modpack…", async log =>
+                {
+                    await TexToolsActions.UpgradeModpackAsync(src, dest, log);
+                });
+            }
+            else
+            {
+                var destFolder = await NativeFolderPicker.PickFolderAsync(this, Path.GetDirectoryName(packs[0]));
+                if (string.IsNullOrWhiteSpace(destFolder)) return;
+                await RunBusyAsync("Upgrading dropped modpacks…", async log =>
+                {
+                    foreach (var src in packs)
+                    {
+                        var name = Path.GetFileNameWithoutExtension(src) + "-upgraded" + Path.GetExtension(src);
+                        var dest = Path.Combine(destFolder, name);
+                        log.Report($"Upgrade: {Path.GetFileName(src)}");
+                        await TexToolsActions.UpgradeModpackAsync(src, dest, log);
+                    }
+                });
+            }
+
+            return;
+        }
+
+        if (kind == DropKind.Texture)
+        {
+            var file = paths.First(f => File.Exists(f) && FileDropSupport.TextureExts.Contains(Path.GetExtension(f)));
+            if (SetupPanel.IsVisible)
+            {
+                BusyText.Text = "Start TexTools (set game path) before previewing textures — still showing image.";
+            }
+            else
+            {
+                MainTabs.SelectedIndex = 0;
+            }
+
+            // Show workspace display even during setup by revealing chrome temporarily for preview
+            if (SetupPanel.IsVisible)
+            {
+                // Keep setup; open pop-out viewer for the external file
+                var win = new DisplayWindow();
+                win.Show(this);
+                await win.ShowExternalPathAsync(file);
+            }
+            else
+            {
+                await MainDisplay.ShowExternalAsync(file, new Progress<string>(msg => BusyText.Text = msg));
+            }
+        }
     }
 
     private async Task EnterWorkspaceAsync()

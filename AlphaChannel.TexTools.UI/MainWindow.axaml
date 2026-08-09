@@ -6,8 +6,15 @@
         Width="1280" Height="720"
         MinWidth="900" MinHeight="560"
         Background="{StaticResource TtChromeBrush}"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        DragDrop.AllowDrop="True">
   <Panel>
+    <Border Name="DropOverlay" IsVisible="False" IsHitTestVisible="False"
+            Background="#99119EDA" ZIndex="100">
+      <TextBlock Name="DropOverlayText" Text="Drop files here"
+                 Foreground="White" FontSize="22" FontWeight="SemiBold"
+                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </Border>
     <!-- Classic TexTools shell: menu + Item List | detail -->
     <DockPanel Name="WorkspacePanel" IsVisible="False">
       <Menu DockPanel.Dock="Top" Background="{StaticResource TtMenuBrush}">
@@ -205,7 +212,7 @@
           </Border>
           <StackPanel Margin="20" Spacing="10">
             <TextBlock Foreground="{StaticResource TtMutedBrush}" TextWrapping="Wrap"
-                       Text="AlphaChannel native Linux shell. Set your FFXIV install (sqpack/ffxiv), then continue." />
+                       Text="AlphaChannel native Linux shell. Set your FFXIV install (sqpack/ffxiv), then continue. You can also drop the game folder or a modpack onto this window." />
             <TextBlock FontWeight="SemiBold" Text="FFXIV Directory" />
             <Grid ColumnDefinitions="*,Auto,Auto">
               <TextBox Grid.Column="0" Name="GamePathBox" Watermark="/path/to/game/sqpack/ffxiv" Margin="0,0,8,0" />

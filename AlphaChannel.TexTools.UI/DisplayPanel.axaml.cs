@@ -28,14 +28,24 @@ public partial class DisplayPanel : UserControl
 
     public async Task ShowPathAsync(string? internalPath, IProgress<string>? log = null)
     {
-        _path = internalPath;
-        if (string.IsNullOrWhiteSpace(internalPath))
+        await ShowPreviewAsync(internalPath, external: false, log);
+    }
+
+    public async Task ShowExternalAsync(string? externalPath, IProgress<string>? log = null)
+    {
+        await ShowPreviewAsync(externalPath, external: true, log);
+    }
+
+    private async Task ShowPreviewAsync(string? path, bool external, IProgress<string>? log)
+    {
+        _path = path;
+        if (string.IsNullOrWhiteSpace(path))
         {
             Clear();
             return;
         }
 
-        TitleText.Text = Path.GetFileName(internalPath);
+        TitleText.Text = Path.GetFileName(path);
         PlaceholderText.Text = "Loading…";
         PlaceholderText.IsVisible = true;
         PreviewImage.IsVisible = false;
@@ -45,13 +55,15 @@ public partial class DisplayPanel : UserControl
 
         try
         {
-            var result = await DisplayPreview.LoadAsync(internalPath, log);
+            var result = external
+                ? await DisplayPreview.LoadExternalAsync(path, log)
+                : await DisplayPreview.LoadAsync(path, log);
             Apply(result);
         }
         catch (Exception ex)
         {
             Clear();
-            TitleText.Text = Path.GetFileName(internalPath);
+            TitleText.Text = Path.GetFileName(path);
             PlaceholderText.Text = "Failed to load preview";
             PlaceholderText.IsVisible = true;
             DetailBox.Text = ex.Message;
@@ -84,13 +96,13 @@ public partial class DisplayPanel : UserControl
         InfoText.Text = result.Info;
         ExportButton.IsEnabled = result.Kind is DisplayKind.Texture or DisplayKind.Model or DisplayKind.Material or DisplayKind.Other;
 
-        if (result.Kind == DisplayKind.Texture && result.Bitmap != null)
+        if (result.Kind == DisplayKind.Texture && result.Image != null)
         {
-            PreviewImage.Source = result.Bitmap;
+            PreviewImage.Source = result.Image;
             PreviewImage.IsVisible = true;
             DetailBox.IsVisible = false;
             PlaceholderText.IsVisible = false;
-            ChannelPanel.IsVisible = true;
+            ChannelPanel.IsVisible = result.RgbaPixels != null;
         }
         else if (!string.IsNullOrWhiteSpace(result.Detail))
         {
@@ -120,7 +132,7 @@ public partial class DisplayPanel : UserControl
         _updatingChannels = true;
         try
         {
-            var bmp = DisplayPreview.CreateBitmap(
+            PreviewImage.Source = DisplayPreview.CreateBitmap(
                 _current.RgbaPixels,
                 _current.Width,
                 _current.Height,
@@ -128,7 +140,6 @@ public partial class DisplayPanel : UserControl
                 GreenBox.IsChecked == true,
                 BlueBox.IsChecked == true,
                 AlphaBox.IsChecked == true);
-            PreviewImage.Source = bmp;
         }
         finally
         {
@@ -136,17 +147,21 @@ public partial class DisplayPanel : UserControl
         }
     }
 
+    private static bool IsExternalFile(string path)
+        => Path.IsPathRooted(path) && File.Exists(path);
+
     private async void OnExport(object? sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_path)) return;
-        if (ExportRequested != null)
+
+        if (!IsExternalFile(_path) && ExportRequested != null)
         {
             await ExportRequested.Invoke(_path);
             return;
         }
 
         var ext = Path.GetExtension(_path).ToLowerInvariant();
-        var suggested = Path.GetFileNameWithoutExtension(_path) + (ext is ".tex" or ".atex" ? ".png" : ext);
+        var suggested = Path.GetFileNameWithoutExtension(_path) + (ext is ".tex" or ".atex" or ".dds" ? ".png" : ext);
         var dest = await TopLevel.GetTopLevel(this)!.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Export file",
@@ -154,17 +169,58 @@ public partial class DisplayPanel : UserControl
         });
         var destPath = dest?.TryGetLocalPath();
         if (string.IsNullOrWhiteSpace(destPath)) return;
-        await TexToolsActions.ExtractFileAsync(_path, destPath, sqpack: false);
+
+        if (IsExternalFile(_path))
+        {
+            if (ext is ".tex" or ".atex" or ".dds")
+            {
+                var preview = await DisplayPreview.LoadExternalAsync(_path);
+                if (preview.RgbaPixels != null)
+                {
+                    // Re-load via framework SaveAs for tex/dds → png
+                    if (ext is ".tex" or ".atex")
+                    {
+                        var tex = xivModdingFramework.Textures.DataContainers.XivTex.FromUncompressedTex(
+                            await File.ReadAllBytesAsync(_path));
+                        await tex.SaveAs(destPath);
+                    }
+                    else
+                    {
+                        var tex = xivModdingFramework.Textures.DataContainers.XivTex.FromUncompressedTex(
+                            xivModdingFramework.Textures.FileTypes.Tex.DDSToUncompressedTex(_path));
+                        await tex.SaveAs(destPath);
+                    }
+                }
+                else
+                {
+                    File.Copy(_path, destPath, overwrite: true);
+                }
+            }
+            else
+            {
+                File.Copy(_path, destPath, overwrite: true);
+            }
+        }
+        else
+        {
+            await TexToolsActions.ExtractFileAsync(_path, destPath, sqpack: false);
+        }
+
         StatusChanged?.Invoke($"Exported → {destPath}");
     }
 
-    private void OnPopOut(object? sender, RoutedEventArgs e)
+    private async void OnPopOut(object? sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_path)) return;
-        var win = new DisplayWindow(_path);
+        var win = new DisplayWindow();
         if (TopLevel.GetTopLevel(this) is Window owner)
             win.Show(owner);
         else
             win.Show();
+
+        if (IsExternalFile(_path))
+            await win.ShowExternalPathAsync(_path);
+        else
+            await win.Panel.ShowPathAsync(_path);
     }
 }

@@ -10,6 +10,7 @@ using xivModdingFramework.Materials.FileTypes;
 using xivModdingFramework.Models.FileTypes;
 using xivModdingFramework.Mods;
 using xivModdingFramework.Textures.DataContainers;
+using xivModdingFramework.Textures.FileTypes;
 
 namespace AlphaChannel.TexTools.UI;
 
@@ -28,7 +29,8 @@ public sealed class DisplayPreviewResult
     public required string Path { get; init; }
     public string Info { get; init; } = "";
     public string Detail { get; init; } = "";
-    public WriteableBitmap? Bitmap { get; init; }
+    /// <summary>Decoded image for the Display panel (WriteableBitmap or file Bitmap).</summary>
+    public Bitmap? Image { get; init; }
     public byte[]? RgbaPixels { get; init; }
     public int Width { get; init; }
     public int Height { get; init; }
@@ -59,7 +61,7 @@ public static class DisplayPreview
                 Height = tex.Height,
                 Format = tex.TextureFormat.ToString(),
                 RgbaPixels = rgba,
-                Bitmap = bitmap,
+                Image = bitmap,
                 Info = $"{tex.Width}×{tex.Height} · {tex.TextureFormat} · {tex.MipMapCount} mipmaps"
                         + (tex.Layers > 1 ? $" · {tex.Layers} layers" : ""),
                 Detail = internalPath,
@@ -191,5 +193,73 @@ public static class DisplayPreview
         }
 
         return files.OrderBy(Rank).ThenBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Preview an external file dropped from the desktop (tex/dds/png/…).
+    /// </summary>
+    public static async Task<DisplayPreviewResult> LoadExternalAsync(string externalPath, IProgress<string>? log = null)
+    {
+        if (!File.Exists(externalPath))
+            throw new FileNotFoundException("File not found.", externalPath);
+
+        var ext = Path.GetExtension(externalPath).ToLowerInvariant();
+        log?.Report($"Loading external: {externalPath}");
+
+        if (ext is ".tex" or ".atex")
+        {
+            var data = await File.ReadAllBytesAsync(externalPath);
+            var tex = XivTex.FromUncompressedTex(data);
+            var rgba = await tex.GetRawPixels(-1);
+            return new DisplayPreviewResult
+            {
+                Kind = DisplayKind.Texture,
+                Path = externalPath,
+                Width = tex.Width,
+                Height = tex.Height,
+                Format = tex.TextureFormat.ToString(),
+                RgbaPixels = rgba,
+                Image = CreateBitmap(rgba, tex.Width, tex.Height, true, true, true, true),
+                Info = $"{tex.Width}×{tex.Height} · {tex.TextureFormat} · external",
+                Detail = externalPath,
+            };
+        }
+
+        if (ext == ".dds")
+        {
+            var tex = XivTex.FromUncompressedTex(Tex.DDSToUncompressedTex(externalPath));
+            var rgba = await tex.GetRawPixels(-1);
+            return new DisplayPreviewResult
+            {
+                Kind = DisplayKind.Texture,
+                Path = externalPath,
+                Width = tex.Width,
+                Height = tex.Height,
+                Format = tex.TextureFormat.ToString(),
+                RgbaPixels = rgba,
+                Image = CreateBitmap(rgba, tex.Width, tex.Height, true, true, true, true),
+                Info = $"{tex.Width}×{tex.Height} · {tex.TextureFormat} · DDS",
+                Detail = externalPath,
+            };
+        }
+
+        if (ext is ".png" or ".bmp" or ".tga" or ".jpg" or ".jpeg")
+        {
+            await using var fs = File.OpenRead(externalPath);
+            var bitmap = new Bitmap(fs);
+            return new DisplayPreviewResult
+            {
+                Kind = DisplayKind.Texture,
+                Path = externalPath,
+                Width = bitmap.PixelSize.Width,
+                Height = bitmap.PixelSize.Height,
+                Format = ext.TrimStart('.').ToUpperInvariant(),
+                Image = bitmap,
+                Info = $"{bitmap.PixelSize.Width}×{bitmap.PixelSize.Height} · {ext.TrimStart('.').ToUpperInvariant()} · external",
+                Detail = externalPath,
+            };
+        }
+
+        throw new NotSupportedException($"Cannot preview external file type: {ext}");
     }
 }
