@@ -17,10 +17,11 @@ Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 | Game path / XLCore doctor | Done |
 | Import modpack → Penumbra library (DT upgrade + folder) | Done |
 | Upgrade / resave / batch-upgrade modpacks | Done |
-| Extract by internal path, list root files | Done |
+| Item browser (search, list files, extract) | Done |
+| Extract by path, list root, wrap/unwrap | Done |
 | Open Penumbra / ModPacks folders | Done |
-| Index backup status / folder | Done (create/restore still DAT-write / classic) |
-| 3D viewers, material editors, live DAT modlist | Not yet (WPF/Helix) |
+| Index backup status + create | Done |
+| 3D viewers, visual material editors, live DAT modlist | Not yet (WPF/Helix) |
 
 ### CachyOS / Arch
 

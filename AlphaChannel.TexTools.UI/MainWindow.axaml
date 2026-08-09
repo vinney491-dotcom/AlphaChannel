@@ -94,31 +94,70 @@
           </ScrollViewer>
         </TabItem>
 
-        <!-- Extract -->
-        <TabItem Header="Extract / List">
-          <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto">
-            <TextBlock Grid.Row="0" Opacity="0.75" TextWrapping="Wrap" Margin="0,0,0,12"
-                       Text="Extract game files by internal path, or list all files for a root id (e.g. c0101h0010)." />
-
-            <Border Grid.Row="1" Padding="12" Background="#12000000" CornerRadius="6" Margin="0,0,0,12">
-              <StackPanel Spacing="8">
-                <TextBlock FontWeight="SemiBold" Text="Extract file" />
-                <TextBox Name="ExtractPathBox" Watermark="chara/weapon/w1234/obj/body/b0001/model/w1234b0001.mdl" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <CheckBox Name="ExtractSqpackBox" Content="Keep sqpack/raw extension match" />
-                  <Button Content="Extract…" Click="OnExtractFile" />
-                </StackPanel>
-                <TextBlock FontWeight="SemiBold" Margin="0,8,0,0" Text="List root files" />
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBox Grid.Column="0" Name="RootIdBox" Watermark="c0101h0010" Margin="0,0,8,0" />
-                  <Button Grid.Column="1" Content="List" Click="OnListRoot" />
-                </Grid>
+        <!-- Items -->
+        <TabItem Header="Items">
+          <Grid Margin="12" ColumnDefinitions="2*,3*" RowDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Opacity="0.75" TextWrapping="Wrap" Margin="0,0,0,8"
+                       Text="Browse gear/character/UI items (classic left-tree). Load once, search, select → list files → extract." />
+            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
+              <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <TextBox Grid.Column="0" Name="ItemSearchBox" Watermark="Search items…" Margin="0,0,8,0"
+                         KeyUp="OnItemSearchKeyUp" />
+                <Button Grid.Column="1" Content="Load items" Click="OnLoadItems" />
+              </Grid>
+              <ListBox Name="ItemsList" MinHeight="320" SelectionChanged="OnItemSelected" />
+            </StackPanel>
+            <DockPanel Grid.Row="1" Grid.Column="1">
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                <Button Content="Extract selected file…" Click="OnExtractSelectedItemFile" />
+                <Button Content="Copy path" Click="OnCopySelectedFilePath" />
               </StackPanel>
-            </Border>
-
-            <TextBox Grid.Row="2" Name="ExtractOutputBox" IsReadOnly="True" AcceptsReturn="True"
-                     TextWrapping="Wrap" FontFamily="monospace" />
+              <ListBox Name="ItemFilesList" />
+            </DockPanel>
+            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Name="ItemsStatusBox" Opacity="0.75" Margin="0,8,0,0" />
           </Grid>
+        </TabItem>
+
+        <!-- Extract -->
+        <TabItem Header="Extract / Tools">
+          <ScrollViewer>
+            <StackPanel Margin="12" Spacing="12">
+              <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                         Text="Raw extract by path, list a root id, or wrap/unwrap single files (ConsoleTools parity)." />
+
+              <Border Padding="12" Background="#12000000" CornerRadius="6">
+                <StackPanel Spacing="8">
+                  <TextBlock FontWeight="SemiBold" Text="Extract file" />
+                  <TextBox Name="ExtractPathBox" Watermark="chara/weapon/w1234/obj/body/b0001/model/w1234b0001.mdl" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <CheckBox Name="ExtractSqpackBox" Content="Keep sqpack/raw extension match" />
+                    <Button Content="Extract…" Click="OnExtractFile" />
+                  </StackPanel>
+                  <TextBlock FontWeight="SemiBold" Margin="0,8,0,0" Text="List root files" />
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Name="RootIdBox" Watermark="c0101h0010" Margin="0,0,8,0" />
+                    <Button Grid.Column="1" Content="List" Click="OnListRoot" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Border Padding="12" Background="#12000000" CornerRadius="6">
+                <StackPanel Spacing="8">
+                  <TextBlock FontWeight="SemiBold" Text="Wrap / Unwrap" />
+                  <TextBlock Opacity="0.7" TextWrapping="Wrap"
+                             Text="Wrap: PNG/DDS/FBX → FFXIV bytes. Unwrap: on-disk .tex/.mdl → PNG/FBX/DB. MDL export may need converter.exe under Wine." />
+                  <TextBox Name="FfPathBox" Watermark="Optional internal path (required for some MDLs)" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Wrap file…" Click="OnWrapFile" />
+                    <Button Content="Unwrap file…" Click="OnUnwrapFile" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <TextBox Name="ExtractOutputBox" IsReadOnly="True" AcceptsReturn="True"
+                       TextWrapping="Wrap" MinHeight="160" FontFamily="monospace" />
+            </StackPanel>
+          </ScrollViewer>
         </TabItem>
 
         <!-- Library -->
@@ -148,16 +187,17 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <Button Content="Open backups folder" Click="OnOpenBackups" />
                   <Button Content="Refresh backup status" Click="OnRefreshBackups" />
+                  <Button Content="Create index backups…" Click="OnCreateBackups" />
                 </StackPanel>
                 <TextBlock Opacity="0.65" TextWrapping="Wrap"
-                           Text="Create/restore via classic TexTools or CLI when DAT writing is intentional. Avalonia does not enable Dat.AllowDatAlteration by default (safer for Penumbra)." />
+                           Text="Create copies clean indexes into Documents/TexTools/Index_Backups. If TexTools DAT mods are active this temporarily enables DAT writing to disable them. Pure Penumbra users are usually fine." />
               </StackPanel>
             </Border>
             <Border Padding="12" Background="#12000000" CornerRadius="6">
               <StackPanel Spacing="8">
-                <TextBlock FontWeight="SemiBold" Text="Not ported yet (classic WPF)" />
+                <TextBlock FontWeight="SemiBold" Text="Still WPF-only" />
                 <TextBlock Opacity="0.75" TextWrapping="Wrap"
-                           Text="• Interactive 3D model / texture viewers (Helix/DirectX)&#x0a;• Live modlist enable/disable against game DATs&#x0a;• Material/colorset visual editors&#x0a;• Item converter / project manager / transaction UI&#x0a;• FBX convert needs converter.exe (Wine) until native converters ship" />
+                           Text="• Interactive 3D / texture viewers (Helix)&#x0a;• Live DAT modlist / project / transaction managers&#x0a;• Visual material &amp; colorset editors&#x0a;• Item converter UI" />
               </StackPanel>
             </Border>
           </StackPanel>

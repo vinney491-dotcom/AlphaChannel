@@ -5,9 +5,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using xivModdingFramework.Cache;
 using xivModdingFramework.Helpers;
+using xivModdingFramework.Items.Interfaces;
 using xivModdingFramework.Models.FileTypes;
 using xivModdingFramework.Mods;
 using xivModdingFramework.Mods.FileTypes;
+using xivModdingFramework.SqPack.FileTypes;
 using xivModdingFramework.Textures.DataContainers;
 
 namespace AlphaChannel.TexTools.UI;
@@ -156,4 +158,129 @@ public static class TexToolsActions
         }
         log?.Report($"Batch complete → {destFolder}");
     }
+
+    public static async Task<IReadOnlyList<ItemRow>> LoadItemBrowserAsync(IProgress<string>? log = null)
+    {
+        await GameSession.EnsureInitializedAsync(log);
+        log?.Report("Loading full item list (can take a bit)…");
+        var items = await XivCache.GetFullItemList();
+        var rows = items
+            .Select(i => new ItemRow(i))
+            .OrderBy(r => r.PrimaryCategory, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.SecondaryCategory, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        log?.Report($"Loaded {rows.Count} items.");
+        return rows;
+    }
+
+    public static async Task<IReadOnlyList<string>> ListItemFilesAsync(IItem item, IProgress<string>? log = null)
+    {
+        await GameSession.EnsureInitializedAsync(log);
+        var root = item.GetRoot();
+        if (root == null)
+            throw new InvalidOperationException("Item has no dependency root.");
+        var files = await root.GetAllFiles();
+        log?.Report($"{item.Name}: {files.Count} files");
+        return files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    public static async Task WrapFileAsync(string src, string dest, string? ffPath, IProgress<string>? log = null)
+    {
+        await GameSession.EnsureInitializedAsync(log);
+        ffPath ??= "chara/file" + Path.GetExtension(dest);
+        log?.Report($"Wrapping: {src} as {ffPath}");
+        var options = new SmartImportOptions();
+        var data = await SmartImport.CreateCompressedFile(src, ffPath, null, options);
+        var destDir = Path.GetDirectoryName(Path.GetFullPath(dest));
+        if (!string.IsNullOrEmpty(destDir))
+            Directory.CreateDirectory(destDir);
+        await File.WriteAllBytesAsync(dest, data);
+        log?.Report($"Wrapped → {dest}");
+    }
+
+    public static async Task UnwrapFileAsync(string src, string dest, string? ffPath, IProgress<string>? log = null)
+    {
+        await GameSession.EnsureInitializedAsync(log);
+        log?.Report($"Unwrapping: {src}");
+        var data = await File.ReadAllBytesAsync(src);
+        ffPath ??= "";
+
+        await using var ms = new MemoryStream(data);
+        using var br = new BinaryReader(ms);
+        var type = Dat.GetSqPackType(br);
+        if (type is > 1 and < 4)
+        {
+            try
+            {
+                log?.Report("Un-SqPacking…");
+                data = await Dat.ReadSqPackFile(data);
+            }
+            catch
+            {
+                log?.Report("Un-SqPack failed; continuing with file as-is.");
+            }
+        }
+
+        var destDir = Path.GetDirectoryName(Path.GetFullPath(dest));
+        if (!string.IsNullOrEmpty(destDir))
+            Directory.CreateDirectory(destDir);
+
+        var rtx = ModTransaction.BeginReadonlyTransaction();
+        if (string.Equals(Path.GetExtension(src), Path.GetExtension(dest), StringComparison.OrdinalIgnoreCase))
+        {
+            await File.WriteAllBytesAsync(dest, data);
+        }
+        else if (src.EndsWith(".tex", StringComparison.OrdinalIgnoreCase)
+                 || src.EndsWith(".atex", StringComparison.OrdinalIgnoreCase))
+        {
+            var tex = XivTex.FromUncompressedTex(data);
+            await tex.SaveAs(dest);
+        }
+        else if (src.EndsWith(".mdl", StringComparison.OrdinalIgnoreCase))
+        {
+            var mdl = Mdl.GetXivMdl(data, ffPath);
+            var ttm = await xivModdingFramework.Models.DataContainers.TTModel.FromRaw(mdl);
+            ttm.Source = ffPath;
+            await Mdl.ExportTTModelToFile(ttm, dest, 1, null, rtx);
+        }
+        else
+        {
+            await File.WriteAllBytesAsync(dest, data);
+        }
+
+        log?.Report($"Unwrapped → {dest}");
+    }
+
+    public static async Task CreateIndexBackupsAsync(IProgress<string>? log = null)
+    {
+        await GameSession.EnsureInitializedAsync(log);
+        var dir = PlatformPaths.GetTexToolsIndexBackupsDirectory();
+        Directory.CreateDirectory(dir);
+        log?.Report($"Creating index backups in {dir} …");
+        // ProblemChecker toggles GameWriteEnabled if DAT mods must be disabled first.
+        await ProblemChecker.CreateIndexBackups(dir);
+        log?.Report("Index backups created.");
+    }
+
+}
+
+public sealed class ItemRow
+{
+    public ItemRow(IItem item)
+    {
+        Item = item;
+        Name = item.Name ?? "";
+        PrimaryCategory = item.PrimaryCategory ?? "";
+        SecondaryCategory = item.SecondaryCategory ?? "";
+        Display = $"{PrimaryCategory} / {SecondaryCategory} — {Name}";
+    }
+
+    public IItem Item { get; }
+    public string Name { get; }
+    public string PrimaryCategory { get; }
+    public string SecondaryCategory { get; }
+    public string Display { get; }
+
+    public override string ToString() => Display;
 }

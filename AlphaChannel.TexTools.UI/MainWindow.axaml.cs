@@ -1,8 +1,10 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,11 +12,13 @@ using System.Text;
 using System.Threading.Tasks;
 using xivModdingFramework.Cache;
 using xivModdingFramework.Helpers;
+
 namespace AlphaChannel.TexTools.UI;
 
 public partial class MainWindow : Window
 {
     private bool _busy;
+    private List<ItemRow> _allItems = new();
 
     public MainWindow()
     {
@@ -219,6 +223,136 @@ public partial class MainWindow : Window
         await RunBusyAsync("Batch upgrading…", async log =>
         {
             await TexToolsActions.BatchUpgradeFolderAsync(srcFolder, destFolder, log);
+        });
+    }
+
+    private async void OnLoadItems(object? sender, RoutedEventArgs e)
+    {
+        await RunBusyAsync("Loading items…", async log =>
+        {
+            _allItems = (await TexToolsActions.LoadItemBrowserAsync(log)).ToList();
+            ApplyItemFilter();
+            ItemsStatusBox.Text = $"{_allItems.Count} items loaded.";
+        });
+    }
+
+    private void OnItemSearchKeyUp(object? sender, KeyEventArgs e) => ApplyItemFilter();
+
+    private void ApplyItemFilter()
+    {
+        var q = ItemSearchBox.Text?.Trim() ?? "";
+        IEnumerable<ItemRow> view = _allItems;
+        if (!string.IsNullOrEmpty(q))
+        {
+            view = _allItems.Where(i =>
+                i.Display.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+        ItemsList.ItemsSource = view.Take(2000).ToList();
+        if (_allItems.Count > 2000 && string.IsNullOrEmpty(q))
+            ItemsStatusBox.Text = $"Showing first 2000 of {_allItems.Count} — use search to narrow.";
+    }
+
+    private async void OnItemSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        if (ItemsList.SelectedItem is not ItemRow row) return;
+        await RunBusyAsync("Listing item files…", async log =>
+        {
+            var files = await TexToolsActions.ListItemFilesAsync(row.Item, log);
+            ItemFilesList.ItemsSource = files;
+            ItemsStatusBox.Text = $"{row.Display} — {files.Count} files";
+            if (files.Count > 0)
+                ExtractPathBox.Text = files[0];
+        });
+    }
+
+    private async void OnExtractSelectedItemFile(object? sender, RoutedEventArgs e)
+    {
+        if (ItemFilesList.SelectedItem is not string path)
+        {
+            ItemsStatusBox.Text = "Select a file in the right list first.";
+            return;
+        }
+        ExtractPathBox.Text = path;
+        OnExtractFile(sender, e);
+        await Task.CompletedTask;
+    }
+
+    private async void OnCopySelectedFilePath(object? sender, RoutedEventArgs e)
+    {
+        if (ItemFilesList.SelectedItem is not string path) return;
+        ExtractPathBox.Text = path;
+        try
+        {
+            if (Clipboard != null)
+                await Clipboard.SetTextAsync(path);
+            ItemsStatusBox.Text = $"Copied: {path}";
+        }
+        catch
+        {
+            ItemsStatusBox.Text = path;
+        }
+    }
+
+    private async void OnWrapFile(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select file to wrap",
+            AllowMultiple = false,
+        });
+        if (files.Count == 0) return;
+        var src = files[0].TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(src)) return;
+
+        var dest = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save wrapped FFXIV file as",
+            SuggestedFileName = Path.GetFileNameWithoutExtension(src) + Path.GetExtension(src),
+        });
+        var destPath = dest?.TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(destPath)) return;
+
+        var ff = FfPathBox.Text?.Trim();
+        await RunBusyAsync("Wrapping…", async log =>
+        {
+            await TexToolsActions.WrapFileAsync(src, destPath, string.IsNullOrWhiteSpace(ff) ? null : ff, log);
+            AppendExtract($"Wrapped → {destPath}");
+        });
+    }
+
+    private async void OnUnwrapFile(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select FFXIV file to unwrap",
+            AllowMultiple = false,
+        });
+        if (files.Count == 0) return;
+        var src = files[0].TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(src)) return;
+
+        var dest = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save unwrapped file as",
+            SuggestedFileName = Path.GetFileNameWithoutExtension(src) + ".png",
+        });
+        var destPath = dest?.TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(destPath)) return;
+
+        var ff = FfPathBox.Text?.Trim();
+        await RunBusyAsync("Unwrapping…", async log =>
+        {
+            await TexToolsActions.UnwrapFileAsync(src, destPath, string.IsNullOrWhiteSpace(ff) ? null : ff, log);
+            AppendExtract($"Unwrapped → {destPath}");
+        });
+    }
+
+    private async void OnCreateBackups(object? sender, RoutedEventArgs e)
+    {
+        await RunBusyAsync("Creating index backups…", async log =>
+        {
+            await TexToolsActions.CreateIndexBackupsAsync(log);
+            OnRefreshBackups(sender, e);
         });
     }
 
