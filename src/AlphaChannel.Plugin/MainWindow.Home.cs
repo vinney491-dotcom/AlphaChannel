@@ -19,6 +19,7 @@ internal sealed partial class MainWindow
 
     // Player source tabs: Home CTAs set this before navigating to Player.
     private int playerSourceTab;
+    private string homeInviteFriendName = string.Empty;
 
     private void DrawHome()
     {
@@ -33,7 +34,7 @@ internal sealed partial class MainWindow
         const float footerReserve = 36f;
         var workHeight = MathF.Max(280f, avail.Y - footerReserve);
 
-        DrawHomeHero(workHeight * 0.38f);
+        DrawHomeHero(workHeight * 0.42f);
         ImGui.Dummy(new Vector2(0, sectionGap));
         DrawHomeCapabilities();
         ImGui.Dummy(new Vector2(0, sectionGap));
@@ -66,23 +67,12 @@ internal sealed partial class MainWindow
 
         ImGui.PushTextWrapPos(ImGui.GetCursorPos().X + textWidth);
         ImGui.TextWrapped(
-            "Put a video on a screen in Eorzea and keep everyone in sync — " +
-            "watch parties, in-world placement, and a quiet place to start.");
+            "Bring your favourite videos into Eorzea. Create watch parties, share screens, " +
+            "and enjoy moments together with friends wherever you are.");
         ImGui.PopTextWrapPos();
 
-        ImGui.Dummy(new Vector2(0, 10));
-        using (ImRaii.PushColor(ImGuiCol.Button, Accent)
-                   .Push(ImGuiCol.ButtonHovered, AccentHover)
-                   .Push(ImGuiCol.ButtonActive, AccentActive)
-                   .Push(ImGuiCol.Text, Vector4.One))
-        {
-            if (ImGui.Button("Get Started  →", new Vector2(150, 32)))
-            {
-                playerSourceTab = 0;
-                playerFocusJoin = false;
-                currentPage = HomePage.Player;
-            }
-        }
+        ImGui.Dummy(new Vector2(0, 12));
+        DrawHomeInviteFriends(MathF.Min(textWidth, ImGui.GetContentRegionAvail().X * 0.95f));
 
         ImGui.EndGroup();
         var textHeight = ImGui.GetItemRectSize().Y;
@@ -93,6 +83,73 @@ internal sealed partial class MainWindow
             var heroHeight = Math.Clamp(MathF.Min(textHeight, maxHeroHeight), 140f, maxHeroHeight);
             DrawHomeHeroArt(artWidth, heroHeight);
         }
+    }
+
+    private void DrawHomeInviteFriends(float width)
+    {
+        const float height = 148f;
+        var origin = ImGui.GetCursorScreenPos();
+        var drawList = ImGui.GetWindowDrawList();
+        drawList.AddRectFilled(origin, origin + new Vector2(width, height),
+            ImGui.GetColorU32(new Vector4(CardBg.X, CardBg.Y, CardBg.Z, 0.55f)), 14f);
+
+        using (ImRaii.PushStyle(ImGuiStyleVar.WindowPadding, new Vector2(14, 12)))
+        using (var card = ImRaii.Child("##inviteFriends", new Vector2(width, height), false,
+                   ImGuiWindowFlags.NoScrollbar))
+        {
+            if (!card)
+            {
+                return;
+            }
+
+            var art = assets.Get("addfriends.png");
+            const float disc = 52f;
+            var artOrigin = ImGui.GetCursorScreenPos() + new Vector2(4, 8);
+            if (art is not null)
+            {
+                ImGui.GetWindowDrawList().AddImageRounded(art.Handle, artOrigin,
+                    artOrigin + new Vector2(disc, disc), Vector2.Zero, Vector2.One,
+                    ImGui.GetColorU32(Vector4.One), 12f);
+            }
+
+            ImGui.Dummy(new Vector2(disc + 8, disc + 8));
+            ImGui.SameLine(0, 14);
+            ImGui.BeginGroup();
+            ImGui.Dummy(new Vector2(0, 4));
+            ImGui.TextUnformatted("Invite your friends to watch with you!");
+            ImGui.TextColored(MutedText, "Add friends to host parties and stay in sync.");
+            ImGui.Dummy(new Vector2(0, 4));
+            ImGui.SetNextItemWidth(MathF.Max(120f, width - 250f));
+            var submitted = ImGui.InputTextWithHint("##friendName", "Enter a friend's name…",
+                ref homeInviteFriendName, 64, ImGuiInputTextFlags.EnterReturnsTrue);
+            ImGui.SameLine();
+            using (ImRaii.PushColor(ImGuiCol.Button, Accent)
+                       .Push(ImGuiCol.ButtonHovered, AccentHover)
+                       .Push(ImGuiCol.ButtonActive, AccentActive)
+                       .Push(ImGuiCol.Text, Vector4.One))
+            {
+                if ((ImGui.Button("Add Friend", new Vector2(110, 0)) || submitted)
+                    && homeInviteFriendName.Trim().Length > 0)
+                {
+                    OpenFriendsAdd(homeInviteFriendName.Trim());
+                }
+            }
+
+            ImGui.EndGroup();
+        }
+    }
+
+    private void OpenFriendsAdd(string name)
+    {
+        if (CurrentSession is null)
+        {
+            currentPage = HomePage.Settings;
+            return;
+        }
+
+        friendSearchInput = name;
+        currentPage = HomePage.Friends;
+        RequestFriendSearch(CurrentSession, name);
     }
 
     private void DrawHomeHeroArt(float width, float height)
@@ -150,60 +207,71 @@ internal sealed partial class MainWindow
         ImGui.Dummy(new Vector2(0, 10));
 
         var avail = ImGui.GetContentRegionAvail().X;
-        const float gap = 10f;
-        const int columns = 5;
-        var cardWidth = (avail - gap * (columns - 1)) / columns;
+        const float gap = 12f;
+        var cardWidth = (avail - gap * 2f) / 3f;
 
         // One shared size so every tile matches — text wraps inside, never drives the frame.
         const float pad = 12f;
-        const float disc = 28f;
+        const float disc = 56f;
         const float gapAfterIcon = 8f;
         const float gapAfterTitle = 3f;
         var lineH = ImGui.GetTextLineHeight();
-        var cardHeight = pad + disc + gapAfterIcon + lineH * 2f + gapAfterTitle + lineH * 2f + pad;
+        var cardHeight = pad + disc + gapAfterIcon + lineH + gapAfterTitle + lineH * 2f + lineH + pad;
 
         DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.Play, Accent,
-            "Watch Videos", "YouTube, Twitch, or a link.",
+            FontAwesomeIcon.Play, Accent, "watch-videos.png",
+            "Watch Videos", "YouTube, Twitch, Dailymotion, or a link.", "Start watching →",
             () =>
             {
                 playerSourceTab = 0;
-                currentPage = HomePage.Player;
-            });
-        ImGui.SameLine(0, gap);
-
-        DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.Desktop, Hex(0xA78BFA),
-            "Place the Screen", "Move and size the panel.",
-            () => currentPage = HomePage.Screen);
-        ImGui.SameLine(0, gap);
-
-        DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.Users, Hex(0xF59E0B),
-            "Start a Party", "Host or join a room.",
-            () =>
-            {
                 playerFocusJoin = false;
                 currentPage = HomePage.Player;
             });
         ImGui.SameLine(0, gap);
 
         DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.UserFriends, Hex(0x34D399),
-            "Friends", "Invite and join people.",
+            FontAwesomeIcon.Plus, Hex(0xF59E0B), "create-room.png",
+            "Create Room", "Host your own room and invite friends.", "Create your room →",
+            () =>
+            {
+                playerSourceTab = 0;
+                playerFocusJoin = false;
+                currentPage = HomePage.Player;
+            });
+        ImGui.SameLine(0, gap);
+
+        DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
+            FontAwesomeIcon.SignInAlt, Hex(0xEC4899), "join-room.png",
+            "Join Room", "Enter a friend's room and start watching.", "Join a room →",
+            () =>
+            {
+                playerSourceTab = 0;
+                playerFocusJoin = true;
+                currentPage = HomePage.Player;
+            });
+
+        DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
+            FontAwesomeIcon.Desktop, Hex(0xA78BFA), "place-screen.png",
+            "Place a Screen", "Move and resize your virtual screen.", "Manage screen →",
+            () => currentPage = HomePage.Screen);
+        ImGui.SameLine(0, gap);
+
+        DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
+            FontAwesomeIcon.UserFriends, Hex(0x34D399), "friends-list.png",
+            "Add Friends", "Manage your friends and see who's online.", "Friends List →",
             () => currentPage = CurrentSession is null ? HomePage.Settings : HomePage.Friends);
         ImGui.SameLine(0, gap);
 
         DrawCapabilityCard(cardWidth, cardHeight, pad, disc, gapAfterIcon, gapAfterTitle,
-            FontAwesomeIcon.ThLarge, Hex(0x38BDF8),
-            "Apps", "Chat, Hub, Tweeter.",
+            FontAwesomeIcon.ThLarge, Hex(0x38BDF8), "browse-apps.png",
+            "Browse Apps", "Open chat, Hub, Tweeter, and more.", "App Store →",
             () => currentPage = HomePage.Apps);
     }
 
     // Fixed-size tile: background + hit target only claim layout; copy is DrawList-wrapped inside.
     private void DrawCapabilityCard(float width, float height, float pad, float disc,
         float gapAfterIcon, float gapAfterTitle, FontAwesomeIcon icon, Vector4 color,
-        string title, string body, Action onClick)
+        string? assetFile, string title, string body, string actionText, Action onClick)
     {
         var origin = ImGui.GetCursorScreenPos();
         var size = new Vector2(width, height);
@@ -225,25 +293,36 @@ internal sealed partial class MainWindow
                 ImDrawFlags.None, 1.5f);
         }
 
-        var discOrigin = origin + new Vector2(pad, pad);
-        drawList.AddRectFilled(discOrigin, discOrigin + new Vector2(disc, disc),
-            ImGui.GetColorU32(new Vector4(color.X, color.Y, color.Z, 0.22f)), 12f);
-        using (ImRaii.PushFont(UiBuilder.IconFont))
+        var discOrigin = origin + new Vector2((width - disc) * 0.5f, pad);
+        var art = assetFile is { } file ? assets.Get(file) : null;
+        if (art is not null)
         {
-            var glyph = icon.ToIconString();
-            var glyphSize = ImGui.CalcTextSize(glyph);
-            var iconNudge = icon == FontAwesomeIcon.Play ? new Vector2(1.5f, 0f) : Vector2.Zero;
-            drawList.AddText(discOrigin + new Vector2(disc, disc) / 2f - glyphSize / 2f + iconNudge,
-                ImGui.GetColorU32(color), glyph);
+            drawList.AddImageRounded(art.Handle, discOrigin, discOrigin + new Vector2(disc, disc),
+                Vector2.Zero, Vector2.One, ImGui.GetColorU32(Vector4.One), 12f);
+        }
+        else
+        {
+            drawList.AddRectFilled(discOrigin, discOrigin + new Vector2(disc, disc),
+                ImGui.GetColorU32(new Vector4(color.X, color.Y, color.Z, 0.22f)), 12f);
+            using (ImRaii.PushFont(UiBuilder.IconFont))
+            {
+                var glyph = icon.ToIconString();
+                var glyphSize = ImGui.CalcTextSize(glyph);
+                var iconNudge = icon == FontAwesomeIcon.Play ? new Vector2(1.5f, 0f) : Vector2.Zero;
+                drawList.AddText(discOrigin + new Vector2(disc, disc) / 2f - glyphSize / 2f + iconNudge,
+                    ImGui.GetColorU32(color), glyph);
+            }
         }
 
         var wrapWidth = MathF.Max(40f, width - pad * 2f);
         var textPos = origin + new Vector2(pad, pad + disc + gapAfterIcon);
         var lineH = ImGui.GetTextLineHeight();
-        var titleBottom = DrawWrappedLines(drawList, textPos, wrapWidth, lineH, 2,
+        var titleBottom = DrawWrappedLines(drawList, textPos, wrapWidth, lineH, 1,
             ImGui.GetColorU32(Vector4.One), title);
-        DrawWrappedLines(drawList, new Vector2(textPos.X, titleBottom + gapAfterTitle), wrapWidth, lineH, 2,
-            ImGui.GetColorU32(MutedText), body);
+        var bodyBottom = DrawWrappedLines(drawList, new Vector2(textPos.X, titleBottom + gapAfterTitle),
+            wrapWidth, lineH, 2, ImGui.GetColorU32(MutedText), body);
+        drawList.AddText(new Vector2(textPos.X, MathF.Min(bodyBottom + 2f, origin.Y + height - lineH - 6f)),
+            ImGui.GetColorU32(color), actionText);
     }
 
     // Word-wrap into at most maxLines; returns Y just below the last drawn line.

@@ -1,3 +1,7 @@
 {$RELAY_DOMAIN} {
 	reverse_proxy alphachannel-server:5000
 }
+
+api.pearlgate.alphachannel.duckdns.org {
+	reverse_proxy pearlgate-server:5088
+}

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using AlphaChannel.Contracts;
 using AlphaChannel.Plugin.Video;
 using Dalamud.Bindings.ImGui;
@@ -19,6 +20,11 @@ internal sealed partial class MainWindow
     // (not the main thread Draw() runs on) - same reasoning as Plugin.cs's pendingRemoteState.
     private volatile bool isSearching;
     private volatile List<VideoSearchEntry>? searchResults;
+
+    private string dailymotionSearchQuery = string.Empty;
+    private volatile bool isSearchingDailymotion;
+    private volatile List<VideoSearchEntry>? dailymotionSearchResults;
+    private volatile string? dailymotionSearchError;
 
     private string twitchChannelInput = string.Empty;
     private volatile bool isCheckingTwitch;
@@ -100,6 +106,127 @@ internal sealed partial class MainWindow
     {
         searchResults = await searchResolver.SearchAsync(query, 8, CancellationToken.None).ConfigureAwait(false);
         isSearching = false;
+    }
+
+    private void DrawDailymotionSearch()
+    {
+        ImGui.TextColored(MutedText, "Search Dailymotion");
+        ImGui.SetNextItemWidth(-40f);
+        var submitted = ImGui.InputTextWithHint("##dailymotionSearch", "Search Dailymotion…",
+            ref dailymotionSearchQuery, 200, ImGuiInputTextFlags.EnterReturnsTrue);
+        ImGui.SameLine();
+        var clicked = IconButton(FontAwesomeIcon.Search);
+        if ((submitted || clicked) && dailymotionSearchQuery.Trim().Length > 0 && !isSearchingDailymotion)
+        {
+            isSearchingDailymotion = true;
+            dailymotionSearchError = null;
+            _ = RunDailymotionSearchAsync(dailymotionSearchQuery.Trim());
+        }
+
+        if (isSearchingDailymotion)
+        {
+            ImGui.TextDisabled("Searching...");
+        }
+
+        if (dailymotionSearchError is { } error)
+        {
+            ImGui.TextColored(Danger, error);
+        }
+
+        if (dailymotionSearchResults is not { } results || results.Count == 0)
+        {
+            return;
+        }
+
+        ImGui.Spacing();
+        ImGui.Spacing();
+        SectionHeader($"Results ({results.Count})");
+        ImGui.SameLine();
+        ImGui.TextDisabled("Showing first 15");
+
+        for (var index = 0; index < results.Count; index++)
+        {
+            var result = results[index];
+            ImGui.PushID($"dm{index}");
+
+            var thumbnail = thumbnails.Get(result.ThumbnailUrl);
+            if (thumbnail is not null)
+            {
+                var width = QueueThumbnailHeight * thumbnail.Width / MathF.Max(thumbnail.Height, 1);
+                ImGui.Image(thumbnail.Handle, new Vector2(width, QueueThumbnailHeight));
+                ImGui.SameLine();
+            }
+
+            ImGui.BeginGroup();
+            ImGui.TextWrapped(result.Title);
+            var meta = result.Duration is { } duration
+                ? $"{result.ChannelName} - {FormatTime((float)duration.TotalSeconds)}"
+                : result.ChannelName;
+            ImGui.TextDisabled(meta);
+            ImGui.EndGroup();
+
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Play now"))
+            {
+                queue.PlayNow(new VideoQueueEntry(result.Url, result.Title, result.ChannelName, result.Duration,
+                    result.ThumbnailUrl));
+            }
+
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Add"))
+            {
+                queue.Add(new VideoQueueEntry(result.Url, result.Title, result.ChannelName, result.Duration,
+                    result.ThumbnailUrl));
+            }
+
+            ImGui.PopID();
+        }
+    }
+
+    private async Task RunDailymotionSearchAsync(string query)
+    {
+        try
+        {
+            using var http = new HttpClient();
+            var url =
+                "https://api.dailymotion.com/videos?search=" + Uri.EscapeDataString(query) +
+                "&limit=15&fields=id,title,thumbnail_url,duration";
+            using var document = JsonDocument.Parse(await http.GetStringAsync(url).ConfigureAwait(false));
+            var results = new List<VideoSearchEntry>();
+            if (document.RootElement.TryGetProperty("list", out var list))
+            {
+                foreach (var video in list.EnumerateArray())
+                {
+                    var id = video.GetProperty("id").GetString();
+                    var title = video.GetProperty("title").GetString();
+                    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(title))
+                    {
+                        continue;
+                    }
+
+                    var watchUrl = "https://www.dailymotion.com/video/" + id;
+                    var thumbnail = video.TryGetProperty("thumbnail_url", out var thumbEl)
+                        ? thumbEl.GetString()
+                        : null;
+                    TimeSpan? duration = video.TryGetProperty("duration", out var durationEl) &&
+                                         durationEl.TryGetDouble(out var seconds)
+                        ? TimeSpan.FromSeconds(seconds)
+                        : null;
+                    results.Add(new VideoSearchEntry(title, watchUrl, "Dailymotion", duration, thumbnail));
+                }
+            }
+
+            dailymotionSearchResults = results;
+        }
+        catch (Exception exception)
+        {
+            AepLog.Warning($"[Dailymotion] Search failed: {exception.Message}");
+            dailymotionSearchError = "Couldn't search Dailymotion.";
+        }
+        finally
+        {
+            isSearchingDailymotion = false;
+        }
     }
 
     // Opt-in workaround for age-restricted videos, which yt-dlp otherwise refuses outright. Only

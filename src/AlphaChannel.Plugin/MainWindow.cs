@@ -75,6 +75,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     private readonly AetherStreamQueue queue;
     private readonly StreamClient stream;
     private readonly ThumbnailCache thumbnails = new();
+    private readonly AssetTextures assets = new();
     private readonly Action requestRename;
     private readonly SignInFlow signInFlow;
     private readonly AuthClient authClient;
@@ -1230,6 +1231,7 @@ internal sealed partial class MainWindow : Window, IDisposable
     {
         PersistPositions();
         thumbnails.Dispose();
+        assets.Dispose();
         homeHero?.Dispose();
         homeHero = null;
         customBackground?.Dispose();

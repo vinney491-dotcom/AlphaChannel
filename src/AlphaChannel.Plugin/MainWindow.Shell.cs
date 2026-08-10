@@ -356,19 +356,36 @@ internal sealed partial class MainWindow
         {
             ImGui.TextUnformatted("Get Started");
             ImGui.Dummy(new Vector2(0, 8));
-            if (DrawRailAction(FontAwesomeIcon.Plus, Accent, "Create a Room", "Host from Player"))
+            if (stream.Mode is StreamMode.Hosting or StreamMode.Viewing)
             {
-                playerSourceTab = 0;
-                playerFocusJoin = false;
-                currentPage = HomePage.Player;
-            }
+                if (DrawRailAction(FontAwesomeIcon.SignOutAlt, Danger, "Leave Room", "Leave the current watch party"))
+                {
+                    LeaveStream();
+                    partyChatLines.Clear();
+                }
 
-            ImGui.Dummy(new Vector2(0, 6));
-            if (DrawRailAction(FontAwesomeIcon.SignInAlt, Hex(0xA78BFA), "Join a Room", "Enter a friend's name"))
+                ImGui.Dummy(new Vector2(0, 6));
+                if (DrawRailAction(FontAwesomeIcon.Eye, Accent, "View Room", "Open Player / party panel"))
+                {
+                    currentPage = HomePage.Player;
+                }
+            }
+            else
             {
-                playerSourceTab = 0;
-                playerFocusJoin = true;
-                currentPage = HomePage.Player;
+                if (DrawRailAction(FontAwesomeIcon.Plus, Accent, "Create a Room", "Host from Player"))
+                {
+                    playerSourceTab = 0;
+                    playerFocusJoin = false;
+                    currentPage = HomePage.Player;
+                }
+
+                ImGui.Dummy(new Vector2(0, 6));
+                if (DrawRailAction(FontAwesomeIcon.SignInAlt, Hex(0xA78BFA), "Join a Room", "Enter a friend's name"))
+                {
+                    playerSourceTab = 0;
+                    playerFocusJoin = true;
+                    currentPage = HomePage.Player;
+                }
             }
 
             ImGui.Dummy(new Vector2(0, 6));
@@ -782,8 +799,7 @@ internal sealed partial class MainWindow
             ImGui.SameLine(0, 20);
             if (DrawBottomAction(FontAwesomeIcon.Comment, "Chat", iconH))
             {
-                conversationsDirty = true;
-                currentPage = HomePage.Messages;
+                LinkpearlBridge.TryOpenMessages();
             }
         }
     }

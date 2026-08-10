@@ -27,6 +27,9 @@ internal sealed partial class MainWindow
                 DrawTwitchCheck();
                 break;
             case 3:
+                DrawDailymotionSearch();
+                break;
+            case 4:
                 DrawGoLive();
                 break;
         }
@@ -48,7 +51,9 @@ internal sealed partial class MainWindow
         ImGui.SameLine();
         DrawPlayerSourceTab("Twitch", 2);
         ImGui.SameLine();
-        DrawPlayerSourceTab("Go Live", 3);
+        DrawPlayerSourceTab("Dailymotion", 3);
+        ImGui.SameLine();
+        DrawPlayerSourceTab("Go Live", 4);
     }
 
     private void DrawPlayerSourceTab(string label, int tab)
@@ -59,7 +64,7 @@ internal sealed partial class MainWindow
                    .Push(ImGuiCol.ButtonActive, selected ? AccentActive : CardBgHover)
                    .Push(ImGuiCol.Text, selected ? Vector4.One : MutedText))
         {
-            if (ImGui.Button(label, new Vector2(100, 30)))
+            if (ImGui.Button(label, new Vector2(label == "Dailymotion" ? 120 : 100, 30)))
             {
                 playerSourceTab = tab;
             }
@@ -68,7 +73,7 @@ internal sealed partial class MainWindow
 
     private void DrawLinkSource()
     {
-        ImGui.TextColored(MutedText, "Paste a YouTube, Twitch, or direct video URL.");
+        ImGui.TextColored(MutedText, "Paste a YouTube, Twitch, Dailymotion, or direct video URL.");
         ImGui.SetNextItemWidth(-70f);
         var submittedUrl = ImGui.InputTextWithHint("##url", "https://…", ref urlInput, 2000,
             ImGuiInputTextFlags.EnterReturnsTrue);
