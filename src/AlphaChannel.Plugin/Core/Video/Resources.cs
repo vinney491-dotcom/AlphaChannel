@@ -265,7 +265,24 @@ internal sealed class Resources : IDisposable
 				}
 
 				File.Delete(tempFile);
-				Directory.Move(extractFolder, targetFolder);
+				try
+				{
+					Directory.Move(extractFolder, targetFolder);
+				}
+				catch (IOException) when (Directory.Exists(targetFolder))
+				{
+					// Twin AlphaChannel instances (dev + installed) can finish the same update
+					// concurrently; the other copy already won the rename.
+					try
+					{
+						Directory.Delete(extractFolder, recursive: true);
+					}
+					catch
+					{
+						// best-effort cleanup of our temp extract
+					}
+				}
+
 				TryDeleteOldVersionFolders(configDir, nameStartsWith, keepFolder: targetFolder);
 			}
 			else
